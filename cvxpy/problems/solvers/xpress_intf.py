@@ -370,26 +370,24 @@ class XPRESS(Solver):
 
             currow = nrows
 
-            iCone = 0
-
             auxVars = set(range(nOrigVar, len(c)))
 
-            # Conic constraints
-            #
-            # Quadratic objective and constraints fall in this category,
-            # as all quadratic stuff is converted into a cone via a linear transformation
-            for k in dims[s.SOC_DIM]:
+            if self.translate_back_QP_:
 
-                # k is the size of the i-th cone, where i is the index
-                # within dims [s.SOC_DIM]. The cone variables in
-                # CVXOPT, apparently, are separate variables that are
-                # marked as conic but not shown in a cone explicitly.
+                # Conic constraints
+                #
+                # Quadratic objective and constraints fall in this category,
+                # as all quadratic stuff is converted into a cone via a linear transformation
+                for k in dims[s.SOC_DIM]:
 
-                A = data[s.A][currow: currow + k].tocsr()
-                b = data[s.B][currow: currow + k]
-                currow += k
+                    # k is the size of the i-th cone, where i is the index
+                    # within dims [s.SOC_DIM]. The cone variables in
+                    # CVXOPT, apparently, are separate variables that are
+                    # marked as conic but not shown in a cone explicitly.
 
-                if self.translate_back_QP_:
+                    A = data[s.A][currow: currow + k].tocsr()
+                    b = data[s.B][currow: currow + k]
+                    currow += k
 
                     # Conic problem passed by CVXPY is translated back
                     # into a QP problem. The problem is passed to us
@@ -431,31 +429,53 @@ class XPRESS(Solver):
                     self.prob_.addConstraint(xpress.Sum([lhs[i]**2 for i in range(len(lhs))])
                                              <= rhs**2)
 
-                else:
+            else:
 
-                    # Create new (cone) variables and add them to the problem
-                    conevar = numpy.array([xpress.var(name='cX{0:d}_{1:d}'.format(iCone, i),
-                                                      lb=-xpress.infinity if i > 0 else 0)
-                                           for i in range(k)])
+                iCone    = 0
+                iConeVar = 0
 
-                    self.prob_.addVariable(conevar)
+                totConeDim = sum(dims[s.SOC_DIM])
 
-                    initrow = self.prob_.attributes.rows
+                A = data[s.A][currow: currow + totConeDim].tocsr()
+                b = data[s.B][currow: currow + totConeDim]
 
-                    mstart = makeMstart(A, k, 0)
+                conevar = [xpress.var(name='cX{0:d}_{1:d}'.format(iCone, i),
+                                      lb=-xpress.infinity if i > 0 else 0)
+                           #for k in dims[s.SOC_DIM]
+                           for iCone in range(len(dims[s.SOC_DIM]))
+                           for i in range(dims[s.SOC_DIM][iCone])]
 
-                    trNames = ['linT_qc{0:d}_{1:d}'.format(iCone, i) for i in range(k)]
+                self.prob_.addVariable(conevar)
 
-                    # Linear transformation for cone variables <--> original variables
-                    self.prob_.addrows(['E'] * k,        # qrtypes
-                                       b,                # rhs
-                                       mstart,           # mstart
-                                       A.indices,        # ind
-                                       A.data,           # dmatval
-                                       names=trNames)  # row names
+                initrow = self.prob_.attributes.rows
 
-                    self.prob_.chgmcoef([initrow + i for i in range(k)],
-                                        conevar, [1] * k)
+                mstart = makeMstart (A, totConeDim, 0)
+
+                trNames = ['linT_qc{0:d}_{1:d}'.format(iCone, i)
+                           #for k in dims[s.SOC_DIM]
+                           for iCone in range(len(dims[s.SOC_DIM]))
+                           for i in range(dims[s.SOC_DIM][iCone])]
+
+                self.prob_.addrows(['E'] * totConeDim, # qrtypes
+                                   b,                  # rhs
+                                   mstart,             # mstart
+                                   A.indices,          # ind
+                                   A.data,             # dmatval
+                                   names=trNames)      # row names
+
+                self.prob_.chgmcoef([initrow + i for i in range(totConeDim)],
+                                    conevar, [1] * totConeDim)
+
+                # Conic constraints
+                #
+                # Quadratic objective and constraints fall in this category,
+                # as all quadratic stuff is converted into a cone via a linear transformation
+                for k in dims[s.SOC_DIM]:
+
+                    # k is the size of the i-th cone, where i is the index
+                    # within dims [s.SOC_DIM]. The cone variables in
+                    # CVXOPT, apparently, are separate variables that are
+                    # marked as conic but not shown in a cone explicitly.
 
                     conename = 'cone_qc{0:d}'.format(iCone)
                     # Real cone on the cone variables (if k == 1 there's no
@@ -463,19 +483,26 @@ class XPRESS(Solver):
                     if k > 1:
                         self.prob_.addConstraint(
                             xpress.constraint(constraint=xpress.Sum
-                                              (conevar[i]**2 for i in range(1, k))
-                                              <= conevar[0] ** 2,
+                                              (conevar[iConeVar + i]**2 for i in range(1, k))
+                                              <= conevar[iConeVar] ** 2,
                                               name=conename))
 
-                    auxInd = list(set(A.indices) & auxVars)
+                    iConeVar += k
+
+                    trNamesK = ['linT_qc{0:d}_{1:d}'.format(iCone, i) for i in range(k)]
+
+                    Ak = data[s.A][currow: currow + k].tocsr()
+                    currow += k
+
+                    auxInd = list(set(Ak.indices) & auxVars)
 
                     if len(auxInd) > 0:
                         group = varGroups[varnames[auxInd[0]]]
-                        for i in trNames:
+                        for i in trNamesK:
                             transf2Orig[i] = group
                         transf2Orig[conename] = group
 
-                iCone += 1
+                    iCone += 1
 
             # Objective. Minimize is by default both here and in CVXOPT
             self.prob_.setObjective(xpress.Sum(c[i] * x[i] for i in range(len(c))))
