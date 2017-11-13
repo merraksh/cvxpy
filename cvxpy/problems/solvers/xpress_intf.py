@@ -431,7 +431,7 @@ class XPRESS(Solver):
 
             else:
 
-                iCone    = 0
+                iCone = 0
                 iConeVar = 0
 
                 totConeDim = sum(dims[s.SOC_DIM])
@@ -441,7 +441,7 @@ class XPRESS(Solver):
 
                 conevar = [xpress.var(name='cX{0:d}_{1:d}'.format(iCone, i),
                                       lb=-xpress.infinity if i > 0 else 0)
-                           #for k in dims[s.SOC_DIM]
+                           # for k in dims[s.SOC_DIM]
                            for iCone in range(len(dims[s.SOC_DIM]))
                            for i in range(dims[s.SOC_DIM][iCone])]
 
@@ -449,19 +449,19 @@ class XPRESS(Solver):
 
                 initrow = self.prob_.attributes.rows
 
-                mstart = makeMstart (A, totConeDim, 0)
+                mstart = makeMstart(A, totConeDim, 0)
 
                 trNames = ['linT_qc{0:d}_{1:d}'.format(iCone, i)
-                           #for k in dims[s.SOC_DIM]
+                           # for k in dims[s.SOC_DIM]
                            for iCone in range(len(dims[s.SOC_DIM]))
                            for i in range(dims[s.SOC_DIM][iCone])]
 
-                self.prob_.addrows(['E'] * totConeDim, # qrtypes
-                                   b,                  # rhs
-                                   mstart,             # mstart
-                                   A.indices,          # ind
-                                   A.data,             # dmatval
-                                   names=trNames)      # row names
+                self.prob_.addrows(['E'] * totConeDim,  # qrtypes
+                                   b,                   # rhs
+                                   mstart,              # mstart
+                                   A.indices,           # ind
+                                   A.data,              # dmatval
+                                   names=trNames)       # row names
 
                 self.prob_.chgmcoef([initrow + i for i in range(totConeDim)],
                                     conevar, [1] * totConeDim)
