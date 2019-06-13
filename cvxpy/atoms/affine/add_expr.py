@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,10 +35,10 @@ class AddExpression(AffAtom):
         for group in arg_groups:
             self.args += self.expand_args(group)
 
-    def size_from_args(self):
-        """Returns the (row, col) size of the expression.
+    def shape_from_args(self):
+        """Returns the (row, col) shape of the expression.
         """
-        return u.shape.sum_shapes([arg.size for arg in self.args])
+        return u.shape.sum_shapes([arg.shape for arg in self.args])
 
     def expand_args(self, expr):
         """Helper function to extract the arguments from an AddExpression.
@@ -57,9 +57,31 @@ class AddExpression(AffAtom):
     def numeric(self, values):
         return reduce(op.add, values)
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return False
+
+    def is_symmetric(self):
+        """Is the expression symmetric?
+        """
+        symm_args = all(arg.is_symmetric() for arg in self.args)
+        return self.shape[0] == self.shape[1] and symm_args
+
+    def is_hermitian(self):
+        """Is the expression Hermitian?
+        """
+        herm_args = all(arg.is_hermitian() for arg in self.args)
+        return self.shape[0] == self.shape[1] and herm_args
+
     # As __init__ takes in the arg_groups instead of args, we need a special
     # copy() function.
-    def copy(self, args=None):
+    def copy(self, args=None, id_objects={}):
         """Returns a shallow copy of the AddExpression atom.
 
         Parameters
@@ -80,15 +102,15 @@ class AddExpression(AffAtom):
         return copy
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Sum the linear expressions.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -98,6 +120,6 @@ class AddExpression(AffAtom):
             (LinOp for objective, list of constraints)
         """
         for i, arg in enumerate(arg_objs):
-            if arg.size != size:
-                arg_objs[i] = lu.promote(arg, size)
+            if arg.shape != shape and lu.is_scalar(arg):
+                arg_objs[i] = lu.promote(arg, shape)
         return (lu.sum_expr(arg_objs), [])

@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,10 +12,13 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-"""
 
+THIS FILE IS DEPRECATED AND MAY BE REMOVED WITHOUT WARNING!
+DO NOT CALL THESE FUNCTIONS IN YOUR CODE!
+"""
 import cvxpy.lin_ops.lin_op as lo
 from cvxpy.lin_ops.lin_constraints import LinEqConstr, LinLeqConstr
+import cvxpy.utilities as u
 import numpy as np
 
 # Utility functions for dealing with LinOp.
@@ -50,12 +53,12 @@ def get_id():
     return new_id
 
 
-def create_var(size, var_id=None):
+def create_var(shape, var_id=None):
     """Creates a new internal variable.
 
     Parameters
     ----------
-    size : tuple
+    shape : tuple
         The (rows, cols) dimensions of the variable.
     var_id : int
         The id of the variable.
@@ -67,17 +70,17 @@ def create_var(size, var_id=None):
     """
     if var_id is None:
         var_id = get_id()
-    return lo.LinOp(lo.VARIABLE, size, [], var_id)
+    return lo.LinOp(lo.VARIABLE, shape, [], var_id)
 
 
-def create_param(value, size):
+def create_param(value, shape):
     """Wraps a parameter.
 
     Parameters
     ----------
     value : CVXPY Expression
         A function of parameters.
-    size : tuple
+    shape : tuple
         The (rows, cols) dimensions of the operator.
 
     Returns
@@ -85,17 +88,17 @@ def create_param(value, size):
     LinOP
         A LinOp wrapping the parameter.
     """
-    return lo.LinOp(lo.PARAM, size, [], value)
+    return lo.LinOp(lo.PARAM, shape, [], value)
 
 
-def create_const(value, size, sparse=False):
+def create_const(value, shape, sparse=False):
     """Wraps a constant.
 
     Parameters
     ----------
     value : scalar, NumPy matrix, or SciPy sparse matrix.
         The numeric constant to wrap.
-    size : tuple
+    shape : tuple
         The (rows, cols) dimensions of the constant.
     sparse : bool
         Is the constant a SciPy sparse matrix?
@@ -106,7 +109,7 @@ def create_const(value, size, sparse=False):
         A LinOp wrapping the constant.
     """
     # Check if scalar.
-    if size == (1, 1):
+    if shape == (1, 1):
         op_type = lo.SCALAR_CONST
         if not np.isscalar(value):
             value = value[0, 0]
@@ -115,7 +118,37 @@ def create_const(value, size, sparse=False):
         op_type = lo.SPARSE_CONST
     else:
         op_type = lo.DENSE_CONST
-    return lo.LinOp(op_type, size, [], value)
+    return lo.LinOp(op_type, shape, [], value)
+
+
+def is_scalar(operator):
+    """Returns whether a LinOp is a scalar.
+
+    Parameters
+    ----------
+    operator : LinOp
+        The LinOp to test.
+
+    Returns
+    -------
+        True if the LinOp is a scalar, False otherwise.
+    """
+    return len(operator.shape) == 0 or np.prod(operator.shape, dtype=int) == 1
+
+
+def is_const(operator):
+    """Returns whether a LinOp is constant.
+
+    Parameters
+    ----------
+    operator : LinOp
+        The LinOp to test.
+
+    Returns
+    -------
+        True if the LinOp is a constant, False otherwise.
+    """
+    return operator.type in [lo.SCALAR_CONST, lo.SPARSE_CONST, lo.DENSE_CONST]
 
 
 def sum_expr(operators):
@@ -131,7 +164,7 @@ def sum_expr(operators):
     LinOp
         A LinOp representing the sum of the operators.
     """
-    return lo.LinOp(lo.SUM, operators[0].size, operators, None)
+    return lo.LinOp(lo.SUM, operators[0].shape, operators, None)
 
 
 def neg_expr(operator):
@@ -147,7 +180,7 @@ def neg_expr(operator):
     LinOp
         The negated operator.
     """
-    return lo.LinOp(lo.NEG, operator.size, [operator], None)
+    return lo.LinOp(lo.NEG, operator.shape, [operator], None)
 
 
 def sub_expr(lh_op, rh_op):
@@ -168,7 +201,35 @@ def sub_expr(lh_op, rh_op):
     return sum_expr([lh_op, neg_expr(rh_op)])
 
 
-def mul_expr(lh_op, rh_op, size):
+def promote_lin_ops_for_mul(lh_op, rh_op):
+    """Promote arguments for multiplication.
+
+    Parameters
+    ----------
+    lh_op : LinOp
+        The left-hand operator in the multiplication.
+    rh_op : LinOp
+        The right-hand operator in the multiplication.
+
+    Returns
+    -------
+    LinOp
+       Promoted left-hand operator.
+    LinOp
+       Promoted right-hand operator.
+    tuple
+       Shape of the product
+    """
+    lh_shape, rh_shape, shape = u.shape.mul_shapes_promote(
+        lh_op.shape, rh_op.shape)
+    lh_op = lo.LinOp(lh_op.type, lh_shape, lh_op.args,
+                     lh_op.data)
+    rh_op = lo.LinOp(rh_op.type, rh_shape, rh_op.args,
+                     rh_op.data)
+    return lh_op, rh_op, shape
+
+
+def mul_expr(lh_op, rh_op, shape):
     """Multiply two linear operators, with the constant on the left.
 
     Parameters
@@ -177,18 +238,16 @@ def mul_expr(lh_op, rh_op, size):
         The left-hand operator in the product.
     rh_op : LinOp
         The right-hand operator in the product.
-    size : tuple
-        The size of the product.
 
     Returns
     -------
     LinOp
         A linear operator representing the product.
     """
-    return lo.LinOp(lo.MUL, size, [rh_op], lh_op)
+    return lo.LinOp(lo.MUL, shape, [rh_op], lh_op)
 
 
-def rmul_expr(lh_op, rh_op, size):
+def rmul_expr(lh_op, rh_op, shape):
     """Multiply two linear operators, with the constant on the right.
 
     Parameters
@@ -197,18 +256,18 @@ def rmul_expr(lh_op, rh_op, size):
         The left-hand operator in the product.
     rh_op : LinOp
         The right-hand operator in the product.
-    size : tuple
-        The size of the product.
+    shape : tuple
+        The shape of the product.
 
     Returns
     -------
     LinOp
         A linear operator representing the product.
     """
-    return lo.LinOp(lo.RMUL, size, [lh_op], rh_op)
+    return lo.LinOp(lo.RMUL, shape, [lh_op], rh_op)
 
 
-def mul_elemwise(lh_op, rh_op):
+def multiply(lh_op, rh_op):
     """Multiply two linear operators elementwise.
 
     Parameters
@@ -223,10 +282,10 @@ def mul_elemwise(lh_op, rh_op):
     LinOp
         A linear operator representing the product.
     """
-    return lo.LinOp(lo.MUL_ELEM, lh_op.size, [rh_op], lh_op)
+    return lo.LinOp(lo.MUL_ELEM, lh_op.shape, [rh_op], lh_op)
 
 
-def kron(lh_op, rh_op, size):
+def kron(lh_op, rh_op, shape):
     """Kronecker product of two matrices.
 
     Parameters
@@ -241,7 +300,7 @@ def kron(lh_op, rh_op, size):
     LinOp
         A linear operator representing the Kronecker product.
     """
-    return lo.LinOp(lo.KRON, size, [rh_op], lh_op)
+    return lo.LinOp(lo.KRON, shape, [rh_op], lh_op)
 
 
 def div_expr(lh_op, rh_op):
@@ -255,25 +314,25 @@ def div_expr(lh_op, rh_op):
         The left-hand operator in the quotient.
     rh_op : LinOp
         The right-hand operator in the quotient.
-    size : tuple
-        The size of the quotient.
+    shape : tuple
+        The shape of the quotient.
 
     Returns
     -------
     LinOp
         A linear operator representing the quotient.
     """
-    return lo.LinOp(lo.DIV, lh_op.size, [lh_op], rh_op)
+    return lo.LinOp(lo.DIV, lh_op.shape, [lh_op], rh_op)
 
 
-def promote(operator, size):
-    """Promotes a scalar operator to the given size.
+def promote(operator, shape):
+    """Promotes a scalar operator to the given shape.
 
     Parameters
     ----------
     operator : LinOp
         The operator to promote.
-    size : tuple
+    shape : tuple
         The dimensions to promote to.
 
     Returns
@@ -281,23 +340,25 @@ def promote(operator, size):
     LinOp
         A linear operator representing the promotion.
     """
-    return lo.LinOp(lo.PROMOTE, size, [operator], None)
+    return lo.LinOp(lo.PROMOTE, shape, [operator], None)
 
 
-def sum_entries(operator):
+def sum_entries(operator, shape):
     """Sum the entries of an operator.
 
     Parameters
     ----------
     expr : LinOp
         The operator to sum the entries of.
+    shape : tuple
+        The shape of the sum.
 
     Returns
     -------
     LinOp
         An operator representing the sum.
     """
-    return lo.LinOp(lo.SUM_ENTRIES, (1, 1), [operator], None)
+    return lo.LinOp(lo.SUM_ENTRIES, shape, [operator], None)
 
 
 def trace(operator):
@@ -316,7 +377,7 @@ def trace(operator):
     return lo.LinOp(lo.TRACE, (1, 1), [operator], None)
 
 
-def index(operator, size, keys):
+def index(operator, shape, keys):
     """Indexes/slices an operator.
 
     Parameters
@@ -325,18 +386,18 @@ def index(operator, size, keys):
         The expression to index.
     keys : tuple
         (row slice, column slice)
-    size : tuple
-        The size of the expression after indexing.
+    shape : tuple
+        The shape of the expression after indexing.
 
     Returns
     -------
     LinOp
         An operator representing the indexing.
     """
-    return lo.LinOp(lo.INDEX, size, [operator], keys)
+    return lo.LinOp(lo.INDEX, shape, [operator], keys)
 
 
-def conv(lh_op, rh_op, size):
+def conv(lh_op, rh_op, shape):
     """1D discrete convolution of two vectors.
 
     Parameters
@@ -345,15 +406,15 @@ def conv(lh_op, rh_op, size):
         The left-hand operator in the convolution.
     rh_op : LinOp
         The right-hand operator in the convolution.
-    size : tuple
-        The size of the convolution.
+    shape : tuple
+        The shape of the convolution.
 
     Returns
     -------
     LinOp
         A linear operator representing the convolution.
     """
-    return lo.LinOp(lo.CONV, size, [rh_op], lh_op)
+    return lo.LinOp(lo.CONV, shape, [rh_op], lh_op)
 
 
 def transpose(operator):
@@ -369,18 +430,23 @@ def transpose(operator):
     LinOp
        A linear operator representing the transpose.
     """
-    size = (operator.size[1], operator.size[0])
-    return lo.LinOp(lo.TRANSPOSE, size, [operator], None)
+    if len(operator.shape) < 2:
+        return operator
+    elif len(operator.shape) > 2:
+        return NotImplemented
+    else:
+        shape = (operator.shape[1], operator.shape[0])
+        return lo.LinOp(lo.TRANSPOSE, shape, [operator], None)
 
 
-def reshape(operator, size):
+def reshape(operator, shape):
     """Reshapes an operator.
 
     Parameters
     ----------
     operator : LinOp
         The operator to reshape.
-    size : tuple
+    shape : tuple
         The (rows, cols) of the reshaped operator.
 
     Returns
@@ -388,7 +454,7 @@ def reshape(operator, size):
     LinOp
        LinOp representing the reshaped expression.
     """
-    return lo.LinOp(lo.RESHAPE, size, [operator], None)
+    return lo.LinOp(lo.RESHAPE, shape, [operator], None)
 
 
 def diag_vec(operator):
@@ -404,8 +470,8 @@ def diag_vec(operator):
     LinOp
        LinOp representing the diagonal matrix.
     """
-    size = (operator.size[0], operator.size[0])
-    return lo.LinOp(lo.DIAG_VEC, size, [operator], None)
+    shape = (operator.shape[0], operator.shape[0])
+    return lo.LinOp(lo.DIAG_VEC, shape, [operator], None)
 
 
 def diag_mat(operator):
@@ -421,8 +487,8 @@ def diag_mat(operator):
     LinOp
        LinOp representing the matrix diagonal.
     """
-    size = (operator.size[0], 1)
-    return lo.LinOp(lo.DIAG_MAT, size, [operator], None)
+    shape = (operator.shape[0], 1)
+    return lo.LinOp(lo.DIAG_MAT, shape, [operator], None)
 
 
 def upper_tri(operator):
@@ -438,19 +504,19 @@ def upper_tri(operator):
     LinOp
        LinOp representing the vectorized upper triangle.
     """
-    entries = operator.size[0]*operator.size[1]
-    size = ((entries - operator.size[0])//2, 1)
-    return lo.LinOp(lo.UPPER_TRI, size, [operator], None)
+    entries = operator.shape[0]*operator.shape[1]
+    shape = ((entries - operator.shape[0])//2, 1)
+    return lo.LinOp(lo.UPPER_TRI, shape, [operator], None)
 
 
-def hstack(operators, size):
+def hstack(operators, shape):
     """Concatenates operators horizontally.
 
     Parameters
     ----------
     operator : list
         The operators to stack.
-    size : tuple
+    shape : tuple
         The (rows, cols) of the stacked operators.
 
     Returns
@@ -458,17 +524,17 @@ def hstack(operators, size):
     LinOp
        LinOp representing the stacked expression.
     """
-    return lo.LinOp(lo.HSTACK, size, operators, None)
+    return lo.LinOp(lo.HSTACK, shape, operators, None)
 
 
-def vstack(operators, size):
+def vstack(operators, shape):
     """Concatenates operators vertically.
 
     Parameters
     ----------
     operator : list
         The operators to stack.
-    size : tuple
+    shape : tuple
         The (rows, cols) of the stacked operators.
 
     Returns
@@ -476,7 +542,7 @@ def vstack(operators, size):
     LinOp
        LinOp representing the stacked expression.
     """
-    return lo.LinOp(lo.VSTACK, size, operators, None)
+    return lo.LinOp(lo.VSTACK, shape, operators, None)
 
 
 def get_constr_expr(lh_op, rh_op):
@@ -508,7 +574,7 @@ def create_eq(lh_op, rh_op=None, constr_id=None):
     if constr_id is None:
         constr_id = get_id()
     expr = get_constr_expr(lh_op, rh_op)
-    return LinEqConstr(expr, constr_id, lh_op.size)
+    return LinEqConstr(expr, constr_id, lh_op.shape)
 
 
 def create_leq(lh_op, rh_op=None, constr_id=None):
@@ -530,7 +596,7 @@ def create_leq(lh_op, rh_op=None, constr_id=None):
     if constr_id is None:
         constr_id = get_id()
     expr = get_constr_expr(lh_op, rh_op)
-    return LinLeqConstr(expr, constr_id, lh_op.size)
+    return LinLeqConstr(expr, constr_id, lh_op.shape)
 
 
 def create_geq(lh_op, rh_op=None, constr_id=None):
@@ -555,7 +621,7 @@ def create_geq(lh_op, rh_op=None, constr_id=None):
 
 
 def get_expr_vars(operator):
-    """Get a list of the variables in the operator and their sizes.
+    """Get a list of the variables in the operator and their shapes.
 
     Parameters
     ----------
@@ -565,10 +631,10 @@ def get_expr_vars(operator):
     Returns
     -------
     list
-        A list of (var id, var size) pairs.
+        A list of (var id, var shape) pairs.
     """
     if operator.type == lo.VARIABLE:
-        return [(operator.data, operator.size)]
+        return [(operator.data, operator.shape)]
     else:
         vars_ = []
         for arg in operator.args:
@@ -617,7 +683,7 @@ def copy_constr(constr, func):
         A copy of the constraint with the specified changes.
     """
     expr = func(constr.expr)
-    return type(constr)(expr, constr.constr_id, constr.size)
+    return type(constr)(expr, constr.constr_id, constr.shape)
 
 
 def replace_new_vars(expr, id_to_new_var):
@@ -643,7 +709,7 @@ def replace_new_vars(expr, id_to_new_var):
             new_args.append(
                 replace_new_vars(arg, id_to_new_var)
             )
-        return lo.LinOp(expr.type, expr.size, new_args, expr.data)
+        return lo.LinOp(expr.type, expr.shape, new_args, expr.data)
 
 
 def check_param_val(param):
@@ -684,7 +750,7 @@ def replace_params_with_consts(expr):
         An LinOp identical to expr, but with the parameters replaced.
     """
     if expr.type == lo.PARAM:
-        return create_const(check_param_val(expr.data), expr.size)
+        return create_const(check_param_val(expr.data), expr.shape)
     else:
         new_args = []
         for arg in expr.args:
@@ -692,8 +758,9 @@ def replace_params_with_consts(expr):
         # Data could also be a parameter.
         if isinstance(expr.data, lo.LinOp) and expr.data.type == lo.PARAM:
             data_lin_op = expr.data
+            assert isinstance(data_lin_op.shape, tuple)
             val = check_param_val(data_lin_op.data)
-            data = create_const(val, data_lin_op.size)
+            data = create_const(val, data_lin_op.shape)
         else:
             data = expr.data
-        return lo.LinOp(expr.type, expr.size, new_args, data)
+        return lo.LinOp(expr.type, expr.shape, new_args, data)

@@ -21,7 +21,7 @@ Modeling frameworks
 
 - `Convex.jl <http://convexjl.readthedocs.org/en/latest/>`_ is a Julia-embedded modeling language for convex optimization problems. Convex.jl is based on CVXPY and CVX.
 
-- `CVXcanon <https://github.com/cvxgrp/CVXcanon>`_ is a C++ package that factors out the common operations that modeling languages like CVXPY, CVX, and Convex.jl perform.
+- `cvxcore <https://github.com/cvxgrp/cvxcore>`_ is a C++ package that factors out the common operations that modeling languages like CVXPY, CVX, and Convex.jl perform.
 
 - `GPkit <https://gpkit.readthedocs.org/en/latest/>`_ is a Python package for defining and manipulating geometric programming (GP) models.
 
@@ -29,6 +29,8 @@ Modeling frameworks
 
 Solvers
 -------
+
+- `OSQP <https://osqp.org/>`_ is an open-source C library for solving convex quadratic programs.
 
 - `ECOS <https://www.embotech.com/ECOS>`_ is an open-source C library for solving convex second-order and exponential cone programs.
 

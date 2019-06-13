@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-__version__ = "0.4.10"
+__version__ = "1.0.24"
 from cvxpy.atoms import *
-from cvxpy.expressions.variables import (Variable, Semidef, Symmetric, Bool,
-                                         Int, NonNegative)
+from cvxpy.constraints import NonPos, Zero, SOC, PSD
+from cvxpy.expressions.variable import Variable
 from cvxpy.expressions.constants import Parameter, CallbackParam, Constant
 from cvxpy.problems.problem import Problem
 from cvxpy.problems.objective import Maximize, Minimize
-from cvxpy.problems.solvers.utilities import installed_solvers
-from cvxpy.error import SolverError
-from cvxpy.settings import (CVXOPT, GLPK, GLPK_MI, CBC, JULIA_OPT,
-                            ECOS, ECOS_BB, SCS, GUROBI, ELEMENTAL, MOSEK, LS, XPRESS,
+import cvxpy.interface.scipy_wrapper
+from cvxpy.error import DCPError, DGPError, SolverError, disable_warnings, enable_warnings, warnings_enabled
+from cvxpy.settings import (CVXOPT, GLPK, GLPK_MI, CBC, CPLEX, OSQP,
+                            ECOS, ECOS_BB, SUPER_SCS, SCS, GUROBI, MOSEK, XPRESS,
                             OPTIMAL, UNBOUNDED, INFEASIBLE, SOLVER_ERROR, ROBUST_KKTSOLVER,
                             OPTIMAL_INACCURATE, UNBOUNDED_INACCURATE, INFEASIBLE_INACCURATE)
-from cvxpy.transforms import linearize, partial_optimize, indicator
-
-# Legacy names.
-from cvxpy.expressions.variables.semidef_var import Semidef as semidefinite
+from cvxpy.transforms import linearize, partial_optimize
+from cvxpy.reductions import *
+from cvxpy.reductions.solvers.defines import installed_solvers

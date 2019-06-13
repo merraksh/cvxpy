@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond, Eric Chu
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import cvxpy.lin_ops.lin_utils as lu
 from cvxpy.atoms.elementwise.elementwise import Elementwise
-from cvxpy.constraints.exponential import ExpCone
 import numpy as np
 
 
@@ -48,6 +46,16 @@ class exp(Elementwise):
         """
         return False
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return False
+
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
         """
@@ -69,31 +77,7 @@ class exp(Elementwise):
         Returns:
             A list of SciPy CSC sparse matrices or None.
         """
-        rows = self.args[0].size[0]*self.args[0].size[1]
-        cols = self.size[0]*self.size[1]
+        rows = self.args[0].size
+        cols = self.size
         grad_vals = np.exp(values[0])
         return [exp.elemwise_grad_to_diag(grad_vals, rows, cols)]
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        t = lu.create_var(size)
-        x = arg_objs[0]
-        ones = lu.create_const(np.mat(np.ones(size)), size)
-
-        return (t, [ExpCone(x, ones, t)])

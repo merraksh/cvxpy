@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond, Eric Chu
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,26 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import cvxpy.lin_ops.lin_utils as lu
 from cvxpy.atoms.elementwise.elementwise import Elementwise
-from cvxpy.constraints.exponential import ExpCone
 import numpy as np
 from scipy.special import xlogy
 
+# TODO(akshayka): DGP support.
+
 
 class entr(Elementwise):
-    """Elementwise :math:`-x\log x`.
+    """Elementwise :math:`-x\\log x`.
     """
 
     def __init__(self, x):
         super(entr, self).__init__(x)
 
-    @Elementwise.numpy_numeric
     def numeric(self, values):
         x = values[0]
         results = -xlogy(x, x)
         # Return -inf outside the domain
-        results[np.isnan(results)] = -np.inf
+        if np.isscalar(results):
+            if np.isnan(results):
+                return -np.inf
+        else:
+            results[np.isnan(results)] = -np.inf
         return results
 
     def sign_from_args(self):
@@ -73,8 +76,8 @@ class entr(Elementwise):
         Returns:
             A list of SciPy CSC sparse matrices or None.
         """
-        rows = self.args[0].size[0]*self.args[0].size[1]
-        cols = self.size[0]*self.size[1]
+        rows = self.args[0].size
+        cols = self.size
         # Outside domain or on boundary.
         if np.min(values[0]) <= 0:
             # Non-differentiable.
@@ -87,27 +90,3 @@ class entr(Elementwise):
         """Returns constraints describing the domain of the node.
         """
         return [self.args[0] >= 0]
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        t = lu.create_var(size)
-        x = arg_objs[0]
-        ones = lu.create_const(np.mat(np.ones(size)), size)
-
-        return (t, [ExpCone(t, x, ones)])

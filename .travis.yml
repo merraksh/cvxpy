@@ -1,32 +1,34 @@
-language: python
-virtualenv:
-  system_site_packages: true
+language: C
+os:
+  - osx
+  - linux
 env:
-  global:
-    - LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libgfortran.so.3
   matrix:
-    - DISTRIB="conda" PYTHON_VERSION="2.7" INSTALL_ATLAS="true"
-      NUMPY_VERSION="1.10.4" SCIPY_VERSION="0.17.0"
-      COVERAGE="true" INSTALL_GLPK="true"
-    - DISTRIB="conda" PYTHON_VERSION="2.7" INSTALL_ATLAS="true"
-      NUMPY_VERSION="1.10.4" SCIPY_VERSION="0.17.0"
-      COVERAGE="true" INSTALL_GLPK="false"
-    - DISTRIB="conda" PYTHON_VERSION="3.5" INSTALL_ATLAS="true"
-      NUMPY_VERSION="1.10.4" SCIPY_VERSION="0.17.0"
-      COVERAGE="true" INSTALL_GLPK="true"
-    - DISTRIB="conda" PYTHON_VERSION="3.5" INSTALL_ATLAS="true"
-      NUMPY_VERSION="1.10.4" SCIPY_VERSION="0.17.0"
-      COVERAGE="true" INSTALL_GLPK="false"
+    - DISTRIB="conda" PYTHON_VERSION="2.7" CVXOPT="true"
+      NUMPY_VERSION="1.15" SCIPY_VERSION="1.1.0"
+      COVERAGE="false"
+      DEPLOY_PYPI="false"
+    - DISTRIB="conda" PYTHON_VERSION="3.5" CVXOPT="true"
+      NUMPY_VERSION="1.15" SCIPY_VERSION="1.1.0"
+      COVERAGE="false"
+      DEPLOY_PYPI="false"
+    - DISTRIB="conda" PYTHON_VERSION="3.6" CVXOPT="true"
+      NUMPY_VERSION="1.15" SCIPY_VERSION="1.1.0"
+      COVERAGE="false"
+      DEPLOY_PYPI="true"
+    - DISTRIB="conda" PYTHON_VERSION="3.7" CVXOPT="false"
+      NUMPY_VERSION="1.15" SCIPY_VERSION="1.1.0"
+      COVERAGE="false"
+      DEPLOY_PYPI="false"
 sudo: required
-install: source continuous_integration/install.sh
+install: source continuous_integration/Travis/install_dependencies.sh
 script:
-  - bash continuous_integration/test_script.sh
+  - bash continuous_integration/Travis/test_script.sh
   - flake8 .
 after_success:
-    - if [[ "$COVERAGE" == "true" ]]; then coveralls; fi
-cache: apt
-addons:
-  apt:
-    packages:
-    - gfortran
-    - libgfortran3
+  - if [[ "$COVERAGE" == "true" ]]; then coveralls; fi
+deploy:
+  provider: script
+  script: bash continuous_integration/Travis/deploy_script.sh
+  on:
+    branch: master

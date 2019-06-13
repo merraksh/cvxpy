@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@ limitations under the License.
 
 from cvxpy.expressions.expression import Expression
 from cvxpy.atoms.norm import norm
-from cvxpy.atoms.affine.hstack import hstack
 
 
 def mixed_norm(X, p=2, q=1):
-    """Lp,q norm; :math:` (\sum_k (\sum_l \lvert x_{k,l} \rvert )^q/p)^{1/q}`.
+    """Lp,q norm; :math:`(\\sum_k (\\sum_l \\lvert x_{k,l} \\rvert^p)^{q/p})^{1/q}`.
 
     Parameters
     ----------
@@ -39,7 +38,6 @@ def mixed_norm(X, p=2, q=1):
     X = Expression.cast_to_const(X)
 
     # inner norms
-    vecnorms = [norm(X[i, :], p) for i in range(X.size[0])]
-
+    vecnorms = norm(X, p, axis=1)
     # outer norm
-    return norm(hstack(*vecnorms), q)
+    return norm(vecnorms, q)

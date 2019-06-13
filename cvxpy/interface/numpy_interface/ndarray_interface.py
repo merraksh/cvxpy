@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,40 +36,39 @@ class NDArrayInterface(base.BaseMatrixInterface):
         Returns:
             A matrix of type self.target_matrix or a scalar.
         """
-        if isinstance(value, list):
-            value = numpy.atleast_2d(value)
-            value = value.T
-        elif scipy.sparse.issparse(value):
-            value = value.A
+        if scipy.sparse.issparse(value):
+            result = value.A
         elif isinstance(value, numpy.matrix):
-            value = value.A
-        return numpy.atleast_2d(value)
+            result = value.A
+        elif isinstance(value, list):
+            result = numpy.asarray(value).T
+        else:
+            result = numpy.asarray(value)
+        if result.dtype in [numpy.complex, numpy.float64]:
+            return result
+        else:
+            return result.astype(numpy.float64)
 
     # Return an identity matrix.
     def identity(self, size):
         return numpy.eye(size)
 
     # Return the dimensions of the matrix.
+    def shape(self, matrix):
+        return tuple(int(d) for d in matrix.shape)
+
     def size(self, matrix):
-        # Scalars.
-        if len(matrix.shape) == 0:
-            return (1, 1)
-        # 1D arrays are treated as column vectors.
-        elif len(matrix.shape) == 1:
-            return (int(matrix.size), 1)
-        # 2D arrays.
-        else:
-            rows = int(matrix.shape[0])
-            cols = int(matrix.shape[1])
-            return (rows, cols)
+        """Returns the number of elements in the matrix.
+        """
+        return numpy.prod(self.shape(matrix))
 
     # Get the value of the passed matrix, interpreted as a scalar.
     def scalar_value(self, matrix):
-        return numpy.asscalar(matrix)
+        return matrix.item()
 
     # A matrix with all entries equal to the given scalar value.
-    def scalar_matrix(self, value, rows, cols):
-        return numpy.zeros((rows, cols), dtype='float64') + value
+    def scalar_matrix(self, value, shape):
+        return numpy.zeros(shape, dtype='float64') + value
 
     def reshape(self, matrix, size):
         return numpy.reshape(matrix, size, order='F')

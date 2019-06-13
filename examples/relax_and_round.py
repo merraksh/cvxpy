@@ -1,3 +1,19 @@
+"""
+Copyright 2013 Steven Diamond
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 # Relax and round example for talk.
 from __future__ import division
 from cvxpy import *
@@ -152,7 +168,7 @@ plt.show()
 # L = -100
 # obj = sum_squares(A*x - b)
 # constraints = [L*y <= x, x <= U*y,
-#                sum_entries(y) <= nnz]
+#                sum(y) <= nnz]
 # prob = Problem(Minimize(obj), constraints)
 # relaxation = cvx_relax(prob)
 # print relaxation.solve()
@@ -182,11 +198,11 @@ plt.show()
 # # Annotate variables.
 # X.boolean = False
 # y.boolean = True
-# demand = [sum_entries(X[:, j]) == d[j] for j in range(m)]
-# valid = [sum_entries(X[i, :]) <= y[i]*d.sum() for i in range(n)]
-# obj = sum_entries(mul_elemwise(C, X)) + f.T*y
+# demand = [sum(X[:, j]) == d[j] for j in range(m)]
+# valid = [sum(X[i, :]) <= y[i]*d.sum() for i in range(n)]
+# obj = sum(multiply(C, X)) + f.T*y
 # prob = Problem(Minimize(obj),
-#                [X >= 0, sum_entries(y) >= 3*n/4] + demand + valid)
+#                [X >= 0, sum(y) >= 3*n/4] + demand + valid)
 
 # relaxation = cvx_relax(prob)
 # print relaxation.solve()

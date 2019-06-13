@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,5 +34,5 @@ def bmat(block_lists):
     CVXPY expression
         The CVXPY expression representing the block matrix.
     """
-    row_blocks = [hstack(*blocks) for blocks in block_lists]
-    return vstack(*row_blocks)
+    row_blocks = [hstack(blocks) for blocks in block_lists]
+    return vstack(row_blocks)

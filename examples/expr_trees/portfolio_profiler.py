@@ -1,3 +1,19 @@
+"""
+Copyright 2013 Steven Diamond
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 # simple_portfolio_data
 from cvxpy import *
 import numpy as np
@@ -30,10 +46,10 @@ ret = pbar.T * x
 risk = square(norm(x.__rmul__(D))) + quad_form(y, Z)
 objective = Minimize( -ret + mu * risk )
 
-constraints_longonly = [sum_entries(x) == 1, x >= 0]
+constraints_longonly = [sum(x) == 1, x >= 0]
 
 prob = Problem(objective, constraints_longonly)
-#constraints_totalshort = [sum_entries(x) == 1, one.T * max(-x, 0) <= 0.5]
+#constraints_totalshort = [sum(x) == 1, one.T * max(-x, 0) <= 0.5]
 import time
 print "starting problems"
 

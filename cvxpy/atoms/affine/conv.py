@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,8 +23,24 @@ import numpy as np
 
 class conv(AffAtom):
     """ 1D discrete convolution of two vectors.
+
+    The discrete convolution :math:`c` of vectors :math:`a` and :math:`b` of
+    lengths :math:`n` and :math:`m`, respectively, is a length-:math:`(n+m-1)`
+    vector where
+
+    .. math::
+
+        c_k = \\sum_{i+j=k} a_ib_j, \\quad k=0, \\ldots, n+m-2.
+
+    Parameters
+    ----------
+    lh_expr : Constant
+        A constant 1D vector or a 2D column vector.
+    rh_expr : Expression
+        A 1D vector or a 2D column vector.
     """
     # TODO work with right hand constant.
+    # TODO(akshayka): make DGP-compatible
 
     def __init__(self, lh_expr, rh_expr):
         super(conv, self).__init__(lh_expr, rh_expr)
@@ -45,11 +61,11 @@ class conv(AffAtom):
         if not self.args[0].is_constant():
             raise ValueError("The first argument to conv must be constant.")
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """The sum of the argument dimensions - 1.
         """
-        lh_length = self.args[0].size[0]
-        rh_length = self.args[1].size[0]
+        lh_length = self.args[0].shape[0]
+        rh_length = self.args[1].shape[0]
         return (lh_length + rh_length - 1, 1)
 
     def sign_from_args(self):
@@ -60,23 +76,23 @@ class conv(AffAtom):
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
         """
-        return self.args[0].is_positive()
+        return self.args[0].is_nonneg()
 
     def is_decr(self, idx):
         """Is the composition non-increasing in argument idx?
         """
-        return self.args[0].is_negative()
+        return self.args[0].is_nonpos()
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Convolve two vectors.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -85,4 +101,4 @@ class conv(AffAtom):
         tuple
             (LinOp for objective, list of constraints)
         """
-        return (lu.conv(arg_objs[0], arg_objs[1], size), [])
+        return (lu.conv(arg_objs[0], arg_objs[1], shape), [])

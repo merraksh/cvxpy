@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ limitations under the License.
 
 import cvxpy as cvx
 import cvxpy.settings as s
-from nose.tools import *
 from cvxpy.tests.base_test import BaseTest
 
 
@@ -28,10 +27,10 @@ class TestMonotonicity(BaseTest):
         expr = 1 + cvx.exp(cvx.Variable())
         self.assertEqual(expr.curvature, s.CONVEX)
 
-        expr = cvx.Parameter()*cvx.NonNegative()
+        expr = cvx.Parameter()*cvx.Variable(nonneg=True)
         self.assertEqual(expr.curvature, s.AFFINE)
 
-        f = lambda x: x**2 + x**0.5
+        f = lambda x: x**2 + x**0.5  # noqa E731
         expr = f(cvx.Constant(2))
         self.assertEqual(expr.curvature, s.CONSTANT)
 
@@ -50,7 +49,7 @@ class TestMonotonicity(BaseTest):
         expr = cvx.log(cvx.exp(cvx.Variable()))
         self.assertEqual(expr.is_dcp(), False)
 
-        expr = cvx.entr(cvx.NonNegative())
+        expr = cvx.entr(cvx.Variable(nonneg=True))
         self.assertEqual(expr.curvature, s.CONCAVE)
 
         expr = ((cvx.Variable()**2)**0.5)**0
@@ -79,10 +78,10 @@ class TestMonotonicity(BaseTest):
         self.assertEqual(expr.curvature, s.UNKNOWN)
 
         # Affine argument.
-        expr = cvx.abs(cvx.NonNegative())
+        expr = cvx.abs(cvx.Variable(nonneg=True))
         self.assertEqual(expr.curvature, s.CONVEX)
 
-        expr = cvx.abs(-cvx.NonNegative())
+        expr = cvx.abs(-cvx.Variable(nonneg=True))
         self.assertEqual(expr.curvature, s.CONVEX)
 
         expr = cvx.abs(cvx.Variable())

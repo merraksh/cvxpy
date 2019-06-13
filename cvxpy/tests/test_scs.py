@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond, Eric Chu
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,25 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy import *
-import cvxpy.atoms.elementwise.log as cvxlog
+import cvxpy as cvx
 from cvxpy.tests.base_test import BaseTest
 import math
 import numpy as np
-import sys
-if sys.version_info >= (3, 0):
-    from functools import reduce
+import scipy.linalg as la
 
 
 class TestSCS(BaseTest):
     """ Unit tests for SCS. """
     def setUp(self):
-        self.x = Variable(2, name='x')
-        self.y = Variable(2, name='y')
+        self.x = cvx.Variable(2, name='x')
+        self.y = cvx.Variable(2, name='y')
 
-        self.A = Variable(2, 2, name='A')
-        self.B = Variable(2, 2, name='B')
-        self.C = Variable(3, 2, name='C')
+        self.A = cvx.Variable((2, 2), name='A')
+        self.B = cvx.Variable((2, 2), name='B')
+        self.C = cvx.Variable((3, 2), name='C')
 
     # Overriden method to assume lower accuracy.
     def assertItemsAlmostEqual(self, a, b, places=2):
@@ -44,79 +41,98 @@ class TestSCS(BaseTest):
 
     def test_log_problem(self):
         # Log in objective.
-        obj = Maximize(sum_entries(log(self.x)))
+        obj = cvx.Maximize(cvx.sum(cvx.log(self.x)))
         constr = [self.x <= [1, math.e]]
-        p = Problem(obj, constr)
-        result = p.solve(solver=SCS)
+        p = cvx.Problem(obj, constr)
+        result = p.solve(solver=cvx.SCS)
         self.assertAlmostEqual(result, 1)
         self.assertItemsAlmostEqual(self.x.value, [1, math.e])
 
         # Log in constraint.
-        obj = Minimize(sum_entries(self.x))
-        constr = [log(self.x) >= 0, self.x <= [1, 1]]
-        p = Problem(obj, constr)
-        result = p.solve(solver=SCS)
+        obj = cvx.Minimize(sum(self.x))
+        constr = [cvx.log(self.x) >= 0, self.x <= [1, 1]]
+        p = cvx.Problem(obj, constr)
+        result = p.solve(solver=cvx.SCS)
         self.assertAlmostEqual(result, 2)
         self.assertItemsAlmostEqual(self.x.value, [1, 1])
 
         # Index into log.
-        obj = Maximize(log(self.x)[1])
+        obj = cvx.Maximize(cvx.log(self.x)[1])
         constr = [self.x <= [1, math.e]]
-        p = Problem(obj, constr)
-        result = p.solve(solver=SCS)
-        self.assertAlmostEqual(result, 1)
+        p = cvx.Problem(obj, constr)
+        result = p.solve(solver=cvx.SCS)
 
     def test_sigma_max(self):
         """Test sigma_max.
         """
-        const = Constant([[1, 2, 3], [4, 5, 6]])
+        const = cvx.Constant([[1, 2, 3], [4, 5, 6]])
         constr = [self.C == const]
-        prob = Problem(Minimize(norm(self.C, 2)), constr)
-        result = prob.solve(solver=SCS)
-        self.assertAlmostEqual(result, norm(const, 2).value)
+        prob = cvx.Problem(cvx.Minimize(cvx.norm(self.C, 2)), constr)
+        result = prob.solve(solver=cvx.SCS)
+        self.assertAlmostEqual(result, cvx.norm(const, 2).value)
         self.assertItemsAlmostEqual(self.C.value, const.value)
 
     def test_sdp_var(self):
         """Test sdp var.
         """
-        const = Constant([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        X = Semidef(3)
-        prob = Problem(Minimize(0), [X == const])
-        prob.solve(verbose=True, solver=SCS)
-        self.assertEqual(prob.status, INFEASIBLE)
+        const = cvx.Constant([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        X = cvx.Variable((3, 3), PSD=True)
+        prob = cvx.Problem(cvx.Minimize(0), [X == const])
+        prob.solve(verbose=True, solver=cvx.SCS)
+        self.assertEqual(prob.status, cvx.INFEASIBLE)
 
-    def test_entr(self):
-        """Test the entr atom.
+    def test_cplx_mats(self):
+        """Test complex matrices.
         """
-        self.assertEqual(entr(0).value, 0)
-        assert np.isneginf(entr(-1).value)
+        # Complex-valued matrix
+        K = np.array(np.random.rand(2, 2) + 1j * np.random.rand(2, 2))  # example matrix
+        n1 = la.svdvals(K).sum()  # trace norm of K
+
+        # Dual Problem
+        X = cvx.Variable((2, 2), complex=True)
+        Y = cvx.Variable((2, 2), complex=True)
+        # X, Y >= 0 so trace is real
+        objective = cvx.Minimize(
+            cvx.real(0.5 * cvx.trace(X) + 0.5 * cvx.trace(Y))
+        )
+        constraints = [
+            cvx.bmat([[X, -K.conj().T], [-K, Y]]) >> 0,
+            X >> 0,
+            Y >> 0,
+        ]
+        problem = cvx.Problem(objective, constraints)
+
+        sol_scs = problem.solve(solver='SCS')
+        self.assertEqual(constraints[0].dual_value.shape, (4, 4))
+        self.assertEqual(constraints[1].dual_value.shape, (2, 2))
+        self.assertEqual(constraints[2].dual_value.shape, (2, 2))
+        self.assertAlmostEqual(sol_scs, n1)
 
     def test_kl_div(self):
         """Test a problem with kl_div.
         """
         import numpy as np
-        import cvxpy as cp
 
         kK = 50
         kSeed = 10
 
         prng = np.random.RandomState(kSeed)
-        #Generate a random reference distribution
+        # Generate a random reference distribution
         npSPriors = prng.uniform(0.0, 1.0, (kK, 1))
         npSPriors = npSPriors/sum(npSPriors)
 
-        #Reference distribution
-        p_refProb = cp.Parameter(kK, 1, sign='positive')
-        #Distribution to be estimated
-        v_prob = cp.Variable(kK, 1)
+        # Reference distribution
+        p_refProb = cvx.Parameter((kK, 1), nonneg=True)
+        # Distribution to be estimated
+        v_prob = cvx.Variable((kK, 1))
         objkl = 0.0
         for k in range(kK):
-            objkl += cp.kl_div(v_prob[k, 0], p_refProb[k, 0])
+            objkl += cvx.kl_div(v_prob[k, 0], p_refProb[k, 0])
 
-        constrs = [sum([v_prob[k, 0] for k in range(kK)]) == 1]
-        klprob = cp.Problem(cp.Minimize(objkl), constrs)
+        constrs = [sum(v_prob[k, 0] for k in range(kK)) == 1]
+        klprob = cvx.Problem(cvx.Minimize(objkl), constrs)
         p_refProb.value = npSPriors
-        result = klprob.solve(solver=SCS, verbose=True)
+        klprob.solve(solver=cvx.SCS, verbose=True)
         self.assertItemsAlmostEqual(v_prob.value, npSPriors)
 
     def test_entr(self):
@@ -124,10 +140,10 @@ class TestSCS(BaseTest):
         """
         for n in [5, 10, 25]:
             print(n)
-            x = Variable(n)
-            obj = Maximize(sum_entries(entr(x)))
-            p = Problem(obj, [sum_entries(x) == 1])
-            p.solve(solver=SCS, verbose=True)
+            x = cvx.Variable(n)
+            obj = cvx.Maximize(cvx.sum(cvx.entr(x)))
+            p = cvx.Problem(obj, [cvx.sum(x) == 1])
+            p.solve(solver=cvx.SCS, verbose=True)
             self.assertItemsAlmostEqual(x.value, n*[1./n])
 
     def test_exp(self):
@@ -135,10 +151,10 @@ class TestSCS(BaseTest):
         """
         for n in [5, 10, 25]:
             print(n)
-            x = Variable(n)
-            obj = Minimize(sum_entries(exp(x)))
-            p = Problem(obj, [sum_entries(x) == 1])
-            p.solve(solver=SCS, verbose=True)
+            x = cvx.Variable(n)
+            obj = cvx.Minimize(cvx.sum(cvx.exp(x)))
+            p = cvx.Problem(obj, [cvx.sum(x) == 1])
+            p.solve(solver=cvx.SCS, verbose=True)
             self.assertItemsAlmostEqual(x.value, n*[1./n])
 
     def test_log(self):
@@ -146,48 +162,37 @@ class TestSCS(BaseTest):
         """
         for n in [5, 10, 25]:
             print(n)
-            x = Variable(n)
-            obj = Maximize(sum_entries(log(x)))
-            p = Problem(obj, [sum_entries(x) == 1])
-            p.solve(solver=SCS, verbose=True)
+            x = cvx.Variable(n)
+            obj = cvx.Maximize(cvx.sum(cvx.log(x)))
+            p = cvx.Problem(obj, [cvx.sum(x) == 1])
+            p.solve(solver=cvx.SCS, verbose=True)
             self.assertItemsAlmostEqual(x.value, n*[1./n])
-
-    def test_consistency(self):
-        """Test case for non-deterministic behavior in cvxopt.
-        """
-        import cvxpy
-
-        xs = [0, 1, 2, 3]
-        ys = [51, 60, 70, 75]
-
-        eta1 = cvxpy.Variable()
-        eta2 = cvxpy.Variable()
-        eta3 = cvxpy.Variable()
-        theta1s = [eta1 + eta3*x for x in xs]
-        lin_parts = [theta1 * y + eta2 * y**2 for (theta1, y) in zip(theta1s, ys)]
-        g_parts = [-cvxpy.quad_over_lin(theta1, -4*eta2) + 0.5 * cvxpy.log(-2 * eta2)
-                   for theta1 in theta1s]
-        objective = reduce(lambda x, y: x+y, lin_parts + g_parts)
-        problem = cvxpy.Problem(cvxpy.Maximize(objective))
-        problem.solve(verbose=True, solver=cvxpy.SCS)
-        assert problem.status in [cvxpy.OPTIMAL_INACCURATE, cvxpy.OPTIMAL]
-        return [eta1.value, eta2.value, eta3.value]
 
     def test_warm_start(self):
         """Test warm starting.
         """
-        x = Variable(10)
-        obj = Minimize(sum_entries(exp(x)))
-        prob = Problem(obj, [sum_entries(x) == 1])
-        result = prob.solve(solver=SCS)
-        assert prob.solve(solver=SCS, verbose=True) == result
-        # TODO Probably a bad check. Ought to be the same.
-        assert prob.solve(solver=SCS, warm_start=True, verbose=True) != result
+        x = cvx.Variable(10)
+        obj = cvx.Minimize(cvx.sum(cvx.exp(x)))
+        prob = cvx.Problem(obj, [cvx.sum(x) == 1])
+        result = prob.solve(solver=cvx.SCS, eps=1e-4)
+        time = prob.solver_stats.solve_time
+        result2 = prob.solve(solver=cvx.SCS, warm_start=True, eps=1e-4)
+        time2 = prob.solver_stats.solve_time
+        self.assertAlmostEqual(result2, result, places=2)
+        print(time > time2)
 
-    # def test_kl_div(self):
-    #     """Test the kl_div atom.
-    #     """
-    #     self.assertEqual(kl_div(0, 0).value, 0)
-    #     self.assertEqual(kl_div(1, 0).value, np.inf)
-    #     self.assertEqual(kl_div(0, 1).value, np.inf)
-    #     self.assertEqual(kl_div(-1, -1).value, np.inf)
+    def test_psd_constraint(self):
+        """Test PSD constraint.
+        """
+        s = cvx.Variable((2, 2))
+        obj = cvx.Maximize(cvx.minimum(s[0, 1], 10))
+        const = [s >> 0, cvx.diag(s) == np.ones(2)]
+        prob = cvx.Problem(obj, const)
+        r = prob.solve(solver=cvx.SCS)
+        s = s.value
+        print(const[0].residual)
+        print("value", r)
+        print("s", s)
+        print("eigs", np.linalg.eig(s + s.T)[0])
+        eigs = np.linalg.eig(s + s.T)[0]
+        self.assertEqual(np.all(eigs >= 0), True)

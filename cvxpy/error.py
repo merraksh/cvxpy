@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,6 +15,23 @@ limitations under the License.
 """
 
 
+WARN = False
+
+
+def disable_warnings():
+    global WARN
+    WARN = False
+
+
+def enable_warnings():
+    global WARN
+    WARN = True
+
+
+def warnings_enabled():
+    return WARN
+
+
 class SolverError(Exception):
     """Error thrown when a solver encounters an error solving a problem.
     """
@@ -23,5 +40,23 @@ class SolverError(Exception):
 
 class DCPError(Exception):
     """Error thrown for DCP violations.
+    """
+    pass
+
+
+class DGPError(Exception):
+    """Error thrown for DGP violations.
+    """
+    pass
+
+
+class DQCPError(Exception):
+    """Error thrown for DQCP violations.
+    """
+    pass
+
+
+class ParameterError(Exception):
+    """Error thrown for accessing the value of an unspecified parameter.
     """
     pass

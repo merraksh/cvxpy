@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ limitations under the License.
 
 from cvxpy.atoms.axis_atom import AxisAtom
 from cvxpy.atoms.affine.affine_atom import AffAtom
-from cvxpy.atoms.affine.binary_operators import MulExpression, RMulExpression
-from cvxpy.expressions.variables import Variable
+from cvxpy.atoms.affine.binary_operators import MulExpression
+from cvxpy.expressions.variable import Variable
 import cvxpy.lin_ops.lin_utils as lu
 import numpy as np
 import scipy.sparse as sp
@@ -51,8 +51,8 @@ def get_diff_mat(dim, axis):
             row_arr.append(i)
             col_arr.append(i-1)
 
-    mat = sp.coo_matrix((val_arr, (row_arr, col_arr)),
-                        (dim, dim)).tocsc()
+    mat = sp.csc_matrix((val_arr, (row_arr, col_arr)),
+                        (dim, dim))
     if axis == 0:
         return mat
     else:
@@ -78,10 +78,10 @@ class cumsum(AffAtom, AxisAtom):
         """
         return np.cumsum(values[0], axis=self.axis)
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """The same as the input.
         """
-        return self.args[0].size
+        return self.args[0].shape
 
     def _grad(self, values):
         """Gives the (sub/super)gradient of the atom w.r.t. each argument.
@@ -100,23 +100,28 @@ class cumsum(AffAtom, AxisAtom):
         for i in range(dim):
             for j in range(i+1):
                 mat[i, j] = 1
-        var = Variable(*self.args[0].size)
+        var = Variable(self.args[0].shape)
         if self.axis == 0:
             grad = MulExpression(mat, var)._grad(values)[1]
         else:
-            grad = RMulExpression(var, mat.T)._grad(values)[0]
+            grad = MulExpression(var, mat.T)._grad(values)[0]
         return [grad]
 
+    def get_data(self):
+        """Returns the axis being summed.
+        """
+        return [self.axis]
+
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Cumulative sum via difference matrix.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -127,13 +132,13 @@ class cumsum(AffAtom, AxisAtom):
         """
         # Implicit O(n) definition:
         # X = Y[:1,:] - Y[1:,:]
-        Y = lu.create_var(size)
+        Y = lu.create_var(shape)
         axis = data[0]
-        dim = size[axis]
+        dim = shape[axis]
         diff_mat = get_diff_mat(dim, axis)
         diff_mat = lu.create_const(diff_mat, (dim, dim), sparse=True)
         if axis == 0:
-            diff = lu.mul_expr(diff_mat, Y, size)
+            diff = lu.mul_expr(diff_mat, Y)
         else:
-            diff = lu.rmul_expr(Y, diff_mat, size)
+            diff = lu.rmul_expr(Y, diff_mat)
         return (Y, [lu.create_eq(arg_objs[0], diff)])

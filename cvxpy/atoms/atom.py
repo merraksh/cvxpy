@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,21 +15,26 @@ limitations under the License.
 """
 
 
-from .. import utilities as u
-from .. import interface as intf
-from ..expressions.constants import Constant, CallbackParam
-from ..expressions.expression import Expression
+from cvxpy import utilities as u
+from cvxpy import interface as intf
+from cvxpy.expressions import cvxtypes
+from cvxpy.expressions.constants import Constant, CallbackParam
+from cvxpy.expressions.expression import Expression
+import cvxpy.lin_ops.lin_utils as lu
+from cvxpy.utilities.deterministic import unique_list
+from cvxpy.utilities import performance_utils as perf
 import abc
 import numpy as np
-from fastcache import clru_cache
 
 
 class Atom(Expression):
     """ Abstract base class for atoms. """
     __metaclass__ = abc.ABCMeta
+    _allow_complex = False
     # args are the expressions passed into the Atom constructor.
 
     def __init__(self, *args):
+        self.id = lu.get_id()
         # Throws error if args is empty.
         if len(args) == 0:
             raise TypeError(
@@ -38,28 +43,37 @@ class Atom(Expression):
         # Convert raw values to Constants.
         self.args = [Atom.cast_to_const(arg) for arg in args]
         self.validate_arguments()
-        self._size = self.size_from_args()
+        self._shape = self.shape_from_args()
+        if len(self._shape) > 2:
+            raise ValueError("Atoms must be at most 2D.")
 
     def name(self):
         """Returns the string representation of the function call.
         """
+        if self.get_data() is None:
+            data = []
+        else:
+            data = [str(elem) for elem in self.get_data()]
         return "%s(%s)" % (self.__class__.__name__,
-                           ", ".join([arg.name() for arg in self.args]))
+                           ", ".join([arg.name() for arg in self.args] + data))
 
     def validate_arguments(self):
         """Raises an error if the arguments are invalid.
         """
-        pass
+        if not self._allow_complex and any(arg.is_complex() for arg in self.args):
+            raise ValueError(
+                "Arguments to %s cannot be complex." % self.__class__.__name__
+            )
 
     @abc.abstractmethod
-    def size_from_args(self):
-        """Returns the (row, col) size of the expression.
+    def shape_from_args(self):
+        """Returns the shape of the expression.
         """
         return NotImplemented
 
     @property
-    def size(self):
-        return self._size
+    def shape(self):
+        return self._shape
 
     @abc.abstractmethod
     def sign_from_args(self):
@@ -67,17 +81,31 @@ class Atom(Expression):
         """
         return NotImplemented
 
-    @clru_cache(maxsize=100)
-    def is_positive(self):
-        """Is the expression positive?
+    @perf.compute_once
+    def is_nonneg(self):
+        """Is the expression nonnegative?
         """
         return self.sign_from_args()[0]
 
-    @clru_cache(maxsize=100)
-    def is_negative(self):
-        """Is the expression negative?
+    @perf.compute_once
+    def is_nonpos(self):
+        """Is the expression nonpositive?
         """
         return self.sign_from_args()[1]
+
+    @perf.compute_once
+    def is_imag(self):
+        """Is the expression imaginary?
+        """
+        # Default is false.
+        return False
+
+    @perf.compute_once
+    def is_complex(self):
+        """Is the expression complex valued?
+        """
+        # Default is false.
+        return False
 
     @abc.abstractmethod
     def is_atom_convex(self):
@@ -96,6 +124,31 @@ class Atom(Expression):
         """
         return self.is_atom_concave() and self.is_atom_convex()
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return False
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return False
+
+    def is_atom_quasiconvex(self):
+        """Is the atom quasiconvex?
+        """
+        return self.is_atom_convex()
+
+    def is_atom_quasiconcave(self):
+        """Is the atom quasiconcave?
+        """
+        return self.is_atom_concave()
+
+    def is_atom_log_log_affine(self):
+        """Is the atom log-log affine?
+        """
+        return self.is_atom_log_log_concave() and self.is_atom_log_log_convex()
+
     @abc.abstractmethod
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
@@ -108,7 +161,7 @@ class Atom(Expression):
         """
         return NotImplemented
 
-    @clru_cache(maxsize=100)
+    @perf.compute_once
     def is_convex(self):
         """Is the expression convex?
         """
@@ -125,7 +178,7 @@ class Atom(Expression):
         else:
             return False
 
-    @clru_cache(maxsize=100)
+    @perf.compute_once
     def is_concave(self):
         """Is the expression concave?
         """
@@ -142,6 +195,91 @@ class Atom(Expression):
         else:
             return False
 
+    @perf.compute_once
+    def is_log_log_convex(self):
+        """Is the expression log-log convex?
+        """
+        # Verifies DGP composition rule.
+        if self.is_log_log_constant():
+            return True
+        elif self.is_atom_log_log_convex():
+            for idx, arg in enumerate(self.args):
+                if not (arg.is_log_log_affine() or
+                        (arg.is_log_log_convex() and self.is_incr(idx)) or
+                        (arg.is_log_log_concave() and self.is_decr(idx))):
+                    return False
+            return True
+        else:
+            return False
+
+    @perf.compute_once
+    def is_log_log_concave(self):
+        """Is the expression log-log concave?
+        """
+        # Verifies DGP composition rule.
+        if self.is_log_log_constant():
+            return True
+        elif self.is_atom_log_log_concave():
+            for idx, arg in enumerate(self.args):
+                if not (arg.is_log_log_affine() or
+                        (arg.is_log_log_concave() and self.is_incr(idx)) or
+                        (arg.is_log_log_convex() and self.is_decr(idx))):
+                    return False
+            return True
+        else:
+            return False
+
+    @perf.compute_once
+    def _non_const_idx(self):
+        return [i for i, arg in enumerate(self.args) if not arg.is_constant()]
+
+    @perf.compute_once
+    def is_quasiconvex(self):
+        """Is the expression quaisconvex?
+        """
+        # Verifies the DQCP composition rule.
+        if self.is_convex():
+            return True
+        if type(self) == cvxtypes.maximum():
+            return all(arg.is_quasiconvex() for arg in self.args)
+        non_const = self._non_const_idx()
+        if self.is_scalar() and len(non_const) == 1 and self.is_incr(non_const[0]):
+            # TODO(akshayka): Accommodate vector atoms if people want it.
+            return self.args[non_const[0]].is_quasiconvex()
+        if self.is_scalar() and len(non_const) == 1 and self.is_decr(non_const[0]):
+            return self.args[non_const[0]].is_quasiconcave()
+        if self.is_atom_quasiconvex():
+            for idx, arg in enumerate(self.args):
+                if not (arg.is_affine() or
+                        (arg.is_convex() and self.is_incr(idx)) or
+                        (arg.is_concave() and self.is_decr(idx))):
+                    return False
+            return True
+        return False
+
+    @perf.compute_once
+    def is_quasiconcave(self):
+        """Is the expression quasiconcave?
+        """
+        # Verifies the DQCP composition rule.
+        if self.is_concave():
+            return True
+        if type(self) == cvxtypes.minimum():
+            return all(arg.is_quasiconcave() for arg in self.args)
+        non_const = self._non_const_idx()
+        if self.is_scalar() and len(non_const) == 1 and self.is_incr(non_const[0]):
+            return self.args[non_const[0]].is_quasiconcave()
+        if self.is_scalar() and len(non_const) == 1 and self.is_decr(non_const[0]):
+            return self.args[non_const[0]].is_quasiconvex()
+        if self.is_atom_quasiconcave():
+            for idx, arg in enumerate(self.args):
+                if not (arg.is_affine() or
+                        (arg.is_concave() and self.is_incr(idx)) or
+                        (arg.is_convex() and self.is_decr(idx))):
+                    return False
+            return True
+        return False
+
     def canonicalize(self):
         """Represent the atom as an affine objective and conic constraints.
         """
@@ -149,8 +287,7 @@ class Atom(Expression):
         if self.is_constant():
             # Parameterized expressions are evaluated later.
             if self.parameters():
-                rows, cols = self.size
-                param = CallbackParam(self, rows, cols)
+                param = CallbackParam(lambda: self.value, self.shape)
                 return param.canonical_form
             # Non-parameterized expressions are evaluated immediately.
             else:
@@ -165,20 +302,19 @@ class Atom(Expression):
             # Special info required by the graph implementation.
             data = self.get_data()
             graph_obj, graph_constr = self.graph_implementation(arg_objs,
-                                                                self.size,
+                                                                self.shape,
                                                                 data)
-            return (graph_obj, constraints + graph_constr)
+            return graph_obj, constraints + graph_constr
 
-    @abc.abstractmethod
-    def graph_implementation(self, arg_objs, size, data=None):
+    def graph_implementation(self, arg_objs, shape, data=None):
         """Reduces the atom to an affine expression and list of constraints.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -191,10 +327,18 @@ class Atom(Expression):
 
     @property
     def value(self):
+        if any([p.value is None for p in self.parameters()]):
+            return None
+        return self._value_impl()
+
+    def _value_impl(self):
+        # shapes with 0's dropped in presolve.
+        if 0 in self.shape:
+            result = np.array([])
         # Catch the case when the expression is known to be
         # zero through DCP analysis.
-        if self.is_zero():
-            result = intf.DEFAULT_INTF.zeros(*self.size)
+        elif self.is_zero():
+            result = intf.DEFAULT_INTF.zeros(self.shape)
         else:
             arg_values = []
             for arg in self.args:
@@ -203,18 +347,13 @@ class Atom(Expression):
                 # But if the atom is constant with non-constant
                 # arguments it doesn't depend on its arguments,
                 # so it isn't None.
-                arg_val = arg.value
+                arg_val = arg._value_impl()
                 if arg_val is None and not self.is_constant():
                     return None
                 else:
                     arg_values.append(arg_val)
             result = self.numeric(arg_values)
-
-        # Reduce to a scalar if possible.
-        if intf.size(result) == (1, 1):
-            return intf.scalar_value(result)
-        else:
-            return result
+        return result
 
     @property
     def grad(self):
@@ -303,3 +442,11 @@ class Atom(Expression):
             result = numeric_func(self, values)
             return intf.DEFAULT_INTF.const_to_matrix(result)
         return new_numeric
+
+    def atoms(self):
+        """A list of the atom types present amongst this atom's arguments.
+        """
+        atom_list = []
+        for arg in self.args:
+            atom_list += arg.atoms()
+        return unique_list(atom_list + [type(self)])

@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,4 +19,5 @@ from fractions import Fraction
 
 
 def sqrt(x):
+    """The square root of an expression."""
     return power(x, Fraction(1, 2))

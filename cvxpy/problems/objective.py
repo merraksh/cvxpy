@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,39 +17,39 @@ limitations under the License.
 import cvxpy.utilities as u
 from cvxpy.error import DCPError
 from cvxpy.expressions.expression import Expression
+from cvxpy.interface.matrix_utilities import scalar_value
 import cvxpy.lin_ops.lin_utils as lu
 
 
-class Minimize(u.Canonical):
-    """An optimization objective for minimization.
-    """
+class Objective(u.Canonical):
+    """An optimization objective.
 
-    NAME = "minimize"
+    Parameters
+    ----------
+    expr : Expression
+        The expression to act upon. Must be a scalar.
+
+    Raises
+    ------
+    ValueError
+        If expr is not a scalar.
+    """
 
     def __init__(self, expr):
         self.args = [Expression.cast_to_const(expr)]
         # Validate that the objective resolves to a scalar.
-        if self.args[0].size != (1, 1):
-            raise Exception("The '%s' objective must resolve to a scalar."
-                            % self.NAME)
+        if not self.args[0].is_scalar():
+            raise ValueError("The '%s' objective must resolve to a scalar."
+                             % self.NAME)
+        if not self.args[0].is_real():
+            raise ValueError("The '%s' objective must be real valued."
+                             % self.NAME)
 
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.args[0]))
 
     def __str__(self):
         return ' '.join([self.NAME, self.args[0].name()])
-
-    def __neg__(self):
-        return Maximize(-self.args[0])
-
-    def __add__(self, other):
-        if not isinstance(other, (Minimize, Maximize)):
-            return NotImplemented
-        # Objectives must both be Minimize.
-        if type(other) is Minimize:
-            return Minimize(self.args[0] + other.args[0])
-        else:
-            raise DCPError("Problem does not follow DCP rules.")
 
     def __radd__(self, other):
         if other == 0:
@@ -87,36 +87,74 @@ class Minimize(u.Canonical):
 
     __truediv__ = __div__
 
+    @property
+    def value(self):
+        """The value of the objective expression.
+        """
+        v = self.args[0].value
+        if v is None:
+            return None
+        else:
+            return scalar_value(v)
+
+    def is_quadratic(self):
+        """Returns if the objective is a quadratic function.
+        """
+        return self.args[0].is_quadratic()
+
+    def is_qpwa(self):
+        """Returns if the objective is a quadratic of piecewise affine.
+        """
+        return self.args[0].is_qpwa()
+
+
+class Minimize(Objective):
+    """An optimization objective for minimization.
+
+    Parameters
+    ----------
+    expr : Expression
+        The expression to minimize. Must be a scalar.
+
+    Raises
+    ------
+    ValueError
+        If expr is not a scalar.
+    """
+
+    NAME = "minimize"
+
+    def __neg__(self):
+        return Maximize(-self.args[0])
+
+    def __add__(self, other):
+        if not isinstance(other, (Minimize, Maximize)):
+            return NotImplemented
+        # Objectives must both be Minimize.
+        if type(other) is Minimize:
+            return Minimize(self.args[0] + other.args[0])
+        else:
+            raise DCPError("Problem does not follow DCP rules.")
+
     def canonicalize(self):
         """Pass on the target expression's objective and constraints.
         """
         return self.args[0].canonical_form
-
-    def variables(self):
-        """Returns the variables in the objective.
-        """
-        return self.args[0].variables()
-
-    def parameters(self):
-        """Returns the parameters in the objective.
-        """
-        return self.args[0].parameters()
-
-    def constants(self):
-        """Returns the constants in the objective.
-        """
-        return self.args[0].constants()
 
     def is_dcp(self):
         """The objective must be convex.
         """
         return self.args[0].is_convex()
 
-    @property
-    def value(self):
-        """The value of the objective expression.
+    def is_dgp(self):
+        """The objective must be log-log convex.
         """
-        return self.args[0].value
+        return self.args[0].is_log_log_convex()
+
+    def is_dqcp(self):
+        """The objective must be quasiconvex.
+        """
+        return self.args[0].is_quasiconvex()
 
     @staticmethod
     def primal_to_result(result):
@@ -125,8 +163,18 @@ class Minimize(u.Canonical):
         return result
 
 
-class Maximize(Minimize):
+class Maximize(Objective):
     """An optimization objective for maximization.
+
+    Parameters
+    ----------
+    expr : Expression
+        The expression to maximize. Must be a scalar.
+
+    Raises
+    ------
+    ValueError
+        If expr is not a scalar.
     """
 
     NAME = "maximize"
@@ -146,7 +194,7 @@ class Maximize(Minimize):
     def canonicalize(self):
         """Negates the target expression's objective.
         """
-        obj, constraints = super(Maximize, self).canonicalize()
+        obj, constraints = self.args[0].canonical_form
         return (lu.neg_expr(obj), constraints)
 
     def is_dcp(self):
@@ -154,10 +202,15 @@ class Maximize(Minimize):
         """
         return self.args[0].is_concave()
 
-    def is_quadratic(self):
-        """Returns if the objective is a quadratic function.
+    def is_dgp(self):
+        """The objective must be log-log concave.
         """
-        return self.args[0].is_quadratic()
+        return self.args[0].is_log_log_concave()
+
+    def is_dqcp(self):
+        """The objective must be quasiconcave.
+        """
+        return self.args[0].is_quasiconcave()
 
     @staticmethod
     def primal_to_result(result):

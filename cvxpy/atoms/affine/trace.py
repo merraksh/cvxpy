@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import numpy as np
 class trace(AffAtom):
     """The sum of the diagonal entries of a matrix.
 
-    Attributes
+    Parameters
     ----------
-    expr : CVXPY Expression
+    expr : Expression
         The expression to sum the diagonal of.
     """
 
@@ -40,25 +40,35 @@ class trace(AffAtom):
     def validate_arguments(self):
         """Checks that the argument is a square matrix.
         """
-        rows, cols = self.args[0].size
-        if not rows == cols:
+        shape = self.args[0].shape
+        if self.args[0].ndim != 2 or shape[0] != shape[1]:
             raise ValueError("Argument to trace must be a square matrix.")
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """Always scalar.
         """
-        return (1, 1)
+        return tuple()
+
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return False
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Sum the diagonal entries of the linear expression.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 

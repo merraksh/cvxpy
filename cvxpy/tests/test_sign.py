@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,15 +15,13 @@ limitations under the License.
 """
 
 from cvxpy import Constant, Variable
-import cvxpy.settings as s
-from nose.tools import *
 from cvxpy.tests.base_test import BaseTest
 
 
 class TestSign(BaseTest):
     """ Unit tests for the expression/sign class. """
     @classmethod
-    def setup_class(self):
+    def setUpClass(self):
         self.pos = Constant(1)
         self.neg = Constant(-1)
         self.zero = Constant(0)
@@ -53,19 +51,19 @@ class TestSign(BaseTest):
         self.assertEqual((-self.zero).sign, self.zero.sign)
         self.assertEqual((-self.pos).sign, self.neg.sign)
 
-    # Tests the is_positive and is_negative methods.
+    # Tests the is_nonneg and is_nonpos methods.
     def test_is_sign(self):
-        assert self.pos.is_positive()
-        assert not self.neg.is_positive()
-        assert not self.unknown.is_positive()
-        assert self.zero.is_positive()
+        assert self.pos.is_nonneg()
+        assert not self.neg.is_nonneg()
+        assert not self.unknown.is_nonneg()
+        assert self.zero.is_nonneg()
 
-        assert not self.pos.is_negative()
-        assert self.neg.is_negative()
-        assert not self.unknown.is_negative()
-        assert self.zero.is_negative()
+        assert not self.pos.is_nonpos()
+        assert self.neg.is_nonpos()
+        assert not self.unknown.is_nonpos()
+        assert self.zero.is_nonpos()
 
         assert self.zero.is_zero()
         assert not self.neg.is_zero()
 
-        assert not (self.unknown.is_positive() or self.unknown.is_negative())
+        assert not (self.unknown.is_nonneg() or self.unknown.is_nonpos())

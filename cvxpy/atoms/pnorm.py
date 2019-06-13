@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,24 +14,45 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy.atoms.atom import Atom
 from cvxpy.atoms.axis_atom import AxisAtom
-import cvxpy.lin_ops.lin_utils as lu
+from cvxpy.atoms.norm1 import norm1
+from cvxpy.atoms.norm_inf import norm_inf
 import numpy as np
 import scipy.sparse as sp
-from cvxpy.utilities.power_tools import pow_high, pow_mid, pow_neg, gm_constrs
-from cvxpy.constraints.second_order import SOC
-from cvxpy.constraints.soc_axis import SOC_Axis
-from fractions import Fraction
+from cvxpy.utilities.power_tools import pow_high, pow_mid, pow_neg
 
 
-class pnorm(AxisAtom):
-    r"""The vector p-norm.
+def pnorm(x, p=2, axis=None, keepdims=False, max_denom=1024):
+    """Factory function for a mathematical p-norm.
 
-    If given a matrix variable, ``pnorm`` will treat it as a vector, and compute the p-norm
-    of the concatenated columns.
+    Parameters
+    ----------
+    p : numeric type or string
+       The type of norm to construct; set this to np.inf or 'inf' to
+       construct an infinity norm.
 
-    For :math:`p \geq 1`, the p-norm is given by
+    Returns
+    -------
+    Atom
+       A norm1, norm_inf, or Pnorm object.
+    """
+    if p == 1:
+        return norm1(x, axis=axis, keepdims=keepdims)
+    elif p in [np.inf, 'inf', 'Inf']:
+        return norm_inf(x, axis=axis, keepdims=keepdims)
+    else:
+        return Pnorm(x, p=p, axis=axis, keepdims=keepdims, max_denom=max_denom)
+
+
+class Pnorm(AxisAtom):
+    r"""The vector p-norm, for p not equal to 1 or infinity.
+
+    If given a matrix variable, ``pnorm`` will treat it as a vector, and
+    compute the p-norm of the concatenated columns. Only accepts p values
+    that are not equal to 1 or infinity; the norm1 and norm_inf classes
+    handle those norms.
+
+    For :math:`p > 1`, the p-norm is given by
 
     .. math::
 
@@ -48,8 +69,7 @@ class pnorm(AxisAtom):
     with domain :math:`x \in \mathbf{R}^n_+`.
 
     - Note that the "p-norm" is actually a **norm** only when
-      :math:`p \geq 1` or :math:`p = +\infty`. For these cases,
-      it is convex.
+      :math:`p > 1`. For these cases, it is convex.
     - The expression is not defined when :math:`p = 0`.
     - Otherwise, when :math:`p < 1`, the expression is
       concave, but it is not a true norm.
@@ -75,14 +95,15 @@ class pnorm(AxisAtom):
     x : cvxpy.Variable
         The value to take the norm of.
 
-    p : int, float, Fraction, or string
-        If ``p`` is an ``int``, ``float``, or ``Fraction`` then we must have :math:`p \geq 1`.
+    p : int, float, or Fraction
+        We require that :math:`p > 1`, but :math:`p \neq \infty`. See the
+        norm1 and norm_inf classes for these norms, or use the pnorm
+        function wrapper to instantiate them.
 
-        The only other valid inputs are ``numpy.inf``, ``float('inf')``, ``float('Inf')``, or
-        the strings ``"inf"`` or ``"inf"``, all of which are equivalent and give the infinity norm.
 
     max_denom : int
-        The maximum denominator considered in forming a rational approximation for ``p``.
+        The maximum denominator considered in forming a rational approximation
+        for ``p``.
 
     axis : 0 or 1
            The axis to apply the norm to.
@@ -92,30 +113,27 @@ class pnorm(AxisAtom):
     Expression
         An Expression representing the norm.
     """
+    _allow_complex = True
 
-    def __init__(self, x, p=2, axis=None, max_denom=1024):
-        p_old = p
-        if p in ('inf', 'Inf', np.inf):
-            self.p = np.inf
-        elif p < 0:
+    def __init__(self, x, p=2, axis=None, keepdims=False, max_denom=1024):
+        if p < 0:
+            # TODO(akshayka): Why do we accept p < 0?
             self.p, _ = pow_neg(p, max_denom)
         elif 0 < p < 1:
             self.p, _ = pow_mid(p, max_denom)
         elif p > 1:
             self.p, _ = pow_high(p, max_denom)
         elif p == 1:
-            self.p = 1
+            raise ValueError('Use the norm1 class to instantiate a one norm.')
+        elif p == 'inf' or p == 'Inf' or p == np.inf:
+            raise ValueError('Use the norm_inf class to instantiate an '
+                             'infinity norm.')
         else:
             raise ValueError('Invalid p: {}'.format(p))
+        self.approx_error = float(abs(self.p - p))
+        self.original_p = p
+        super(Pnorm, self).__init__(x, axis=axis, keepdims=keepdims)
 
-        super(pnorm, self).__init__(x, axis=axis)
-
-        if self.p == np.inf:
-            self.approx_error = 0
-        else:
-            self.approx_error = float(abs(self.p - p_old))
-
-    @Atom.numpy_numeric
     def numeric(self, values):
         """Returns the p-norm of x.
         """
@@ -127,26 +145,20 @@ class pnorm(AxisAtom):
 
         if self.p < 1 and np.any(values < 0):
             return -np.inf
-
         if self.p < 0 and np.any(values == 0):
             return 0.0
 
-        retval = np.linalg.norm(values, float(self.p), axis=self.axis)
-
-        # NOTE: workaround for NumPy <=1.9 and no keepdims for norm()
-        if self.axis is not None:
-            if self.axis == 0:
-                retval = np.reshape(retval, (1, self.args[0].size[1]))
-            else:  # self.axis == 1:
-                retval = np.reshape(retval, (self.args[0].size[0], 1))
-
-        return retval
+        return np.linalg.norm(values, float(self.p), axis=self.axis,
+                              keepdims=self.keepdims)
 
     def validate_arguments(self):
-        super(pnorm, self).validate_arguments()
+        super(Pnorm, self).validate_arguments()
+        # TODO(akshayka): Why is axis not supported for other norms?
         if self.axis is not None and self.p != 2:
             raise ValueError(
                 "The axis parameter is only supported for p=2.")
+        if self.p < 1 and self.args[0].is_complex():
+            raise ValueError("pnorm(x, p) cannot have x complex for p < 1.")
 
     def sign_from_args(self):
         """Returns sign (is positive, is negative) of the expression.
@@ -157,27 +169,37 @@ class pnorm(AxisAtom):
     def is_atom_convex(self):
         """Is the atom convex?
         """
-        return self.p >= 1
+        return self.p > 1
 
     def is_atom_concave(self):
         """Is the atom concave?
         """
         return self.p < 1
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return False
+
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
         """
-        return self.p < 1 or (self.p >= 1 and self.args[0].is_positive())
+        return self.p < 1 or (self.p > 1 and self.args[0].is_nonneg())
 
     def is_decr(self, idx):
         """Is the composition non-increasing in argument idx?
         """
-        return self.p >= 1 and self.args[0].is_negative()
+        return self.p > 1 and self.args[0].is_nonpos()
 
     def is_pwl(self):
         """Is the atom piecewise linear?
         """
-        return (self.p == 1 or self.p == np.inf) and self.args[0].is_pwl()
+        return False
 
     def get_data(self):
         return [self.p, self.axis]
@@ -217,163 +239,22 @@ class pnorm(AxisAtom):
             value: A numeric value for a column.
 
         Returns:
-            A NumPy ndarray matrix or None.
+            A NumPy ndarray or None.
         """
-        rows = self.args[0].size[0]*self.args[0].size[1]
-        value = np.matrix(value)
+        rows = self.args[0].size
         # Outside domain.
         if self.p < 1 and np.any(value <= 0):
             return None
         D_null = sp.csc_matrix((rows, 1), dtype='float64')
-        if self.p == 1:
-            D_null += (value > 0)
-            D_null -= (value < 0)
-            return sp.csc_matrix(D_null.A.ravel(order='F')).T
         denominator = np.linalg.norm(value, float(self.p))
         denominator = np.power(denominator, self.p - 1)
         # Subgrad is 0 when denom is 0 (or undefined).
         if denominator == 0:
-            if self.p >= 1:
+            if self.p > 1:
                 return D_null
             else:
                 return None
         else:
             nominator = np.power(value, self.p - 1)
             frac = np.divide(nominator, denominator)
-            return np.reshape(frac.A, (frac.size, 1))
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        r"""Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-
-        Notes
-        -----
-
-        Implementation notes.
-
-        - For general :math:`p \geq 1`, the inequality :math:`\|x\|_p \leq t`
-          is equivalent to the following convex inequalities:
-
-          .. math::
-
-              |x_i| &\leq r_i^{1/p} t^{1 - 1/p}\\
-              \sum_i r_i &= t.
-
-          These inequalities happen to also be correct for :math:`p = +\infty`,
-          if we interpret :math:`1/\infty` as :math:`0`.
-
-        - For general :math:`0 < p < 1`, the inequality :math:`\|x\|_p \geq t`
-          is equivalent to the following convex inequalities:
-
-          .. math::
-
-              r_i &\leq x_i^{p} t^{1 - p}\\
-              \sum_i r_i &= t.
-
-        - For general :math:`p < 0`, the inequality :math:`\|x\|_p \geq t`
-          is equivalent to the following convex inequalities:
-
-          .. math::
-
-              t &\leq x_i^{-p/(1-p)} r_i^{1/(1 - p)}\\
-              \sum_i r_i &= t.
-
-
-
-
-        Although the inequalities above are correct, for a few special cases,
-        we can represent the p-norm more efficiently and with fewer variables and inequalities.
-
-        - For :math:`p = 1`, we use the representation
-
-            .. math::
-
-                x_i &\leq r_i\\
-                -x_i &\leq r_i\\
-                \sum_i r_i &= t
-
-        - For :math:`p = \infty`, we use the representation
-
-            .. math::
-
-                x_i &\leq t\\
-                -x_i &\leq t
-
-          Note that we don't need the :math:`r` variable or the sum inequality.
-
-        - For :math:`p = 2`, we use the natural second-order cone representation
-
-            .. math::
-
-                \|x\|_2 \leq t
-
-          Note that we could have used the set of inequalities given above if we wanted
-          an alternate decomposition of a large second-order cone into into several
-          smaller inequalities.
-
-        """
-        p = data[0]
-        axis = data[1]
-        x = arg_objs[0]
-        t = lu.create_var((1, 1))
-        constraints = []
-
-        # first, take care of the special cases of p = 2, inf, and 1
-        if p == 2:
-            if axis is None:
-                return t, [SOC(t, [x])]
-
-            else:
-                t = lu.create_var(size)
-                return t, [SOC_Axis(lu.reshape(t, (t.size[0]*t.size[1], 1)),
-                                    x, axis)]
-
-        if p == np.inf:
-            t_ = lu.promote(t, x.size)
-            return t, [lu.create_leq(x, t_), lu.create_geq(lu.sum_expr([x, t_]))]
-
-        # we need an absolute value constraint for the symmetric convex branches (p >= 1)
-        # we alias |x| as x from this point forward to make the code pretty :)
-        if p >= 1:
-            absx = lu.create_var(x.size)
-            constraints += [lu.create_leq(x, absx), lu.create_geq(lu.sum_expr([x, absx]))]
-            x = absx
-
-        if p == 1:
-            return lu.sum_entries(x), constraints
-
-        # now, we take care of the remaining convex and concave branches
-        # to create the rational powers, we need a new variable, r, and
-        # the constraint sum(r) == t
-        r = lu.create_var(x.size)
-        t_ = lu.promote(t, x.size)
-        constraints += [lu.create_eq(lu.sum_entries(r), t)]
-
-        # make p a fraction so that the input weight to gm_constrs
-        # is a nice tuple of fractions.
-        p = Fraction(p)
-        if p < 0:
-            constraints += gm_constrs(t_, [x, r],  (-p/(1-p), 1/(1-p)))
-        if 0 < p < 1:
-            constraints += gm_constrs(r,  [x, t_], (p, 1-p))
-        if p > 1:
-            constraints += gm_constrs(x,  [r, t_], (1/p, 1-1/p))
-
-        return t, constraints
-
-        # todo: no need to run gm_constr to form the tree each time.
-        # we only need to form the tree once
+            return np.reshape(frac, (frac.size, 1))

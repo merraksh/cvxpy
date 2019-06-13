@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,18 +36,20 @@ class UnaryOperator(AffAtom):
 
 
 class NegExpression(UnaryOperator):
+    """Negation of an expression.
+    """
     OP_NAME = "-"
     OP_FUNC = op.neg
 
-    def size_from_args(self):
-        """Returns the (row, col) size of the expression.
+    def shape_from_args(self):
+        """Returns the (row, col) shape of the expression.
         """
-        return self.args[0].size
+        return self.args[0].shape
 
     def sign_from_args(self):
         """Returns sign (is positive, is negative) of the expression.
         """
-        return (self.args[0].is_negative(), self.args[0].is_positive())
+        return (self.args[0].is_nonpos(), self.args[0].is_nonneg())
 
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
@@ -59,16 +61,26 @@ class NegExpression(UnaryOperator):
         """
         return True
 
+    def is_symmetric(self):
+        """Is the expression symmetric?
+        """
+        return self.args[0].is_symmetric()
+
+    def is_hermitian(self):
+        """Is the expression Hermitian?
+        """
+        return self.args[0].is_hermitian()
+
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Negate the affine objective.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 

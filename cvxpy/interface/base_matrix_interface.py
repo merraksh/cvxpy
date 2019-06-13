@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ limitations under the License.
 
 import cvxpy.interface.matrix_utilities
 import abc
+import numpy as np
 
 
 class BaseMatrixInterface(object):
@@ -53,9 +54,13 @@ class BaseMatrixInterface(object):
     def identity(self, size):
         return NotImplemented
 
+    # Return the number of elements of the matrix.
+    def size(self, matrix):
+        return np.prod(self.shape(matrix), dtype=int)
+
     # Return the dimensions of the matrix.
     @abc.abstractmethod
-    def size(self, matrix):
+    def shape(self, matrix):
         return NotImplemented
 
     # Get the matrix interpreted as a scalar.
@@ -64,30 +69,30 @@ class BaseMatrixInterface(object):
         return NotImplemented
 
     # Return a matrix with all 0's.
-    def zeros(self, rows, cols):
-        return self.scalar_matrix(0, rows, cols)
+    def zeros(self, shape):
+        return self.scalar_matrix(0, shape)
 
     # Return a matrix with all 1's.
-    def ones(self, rows, cols):
-        return self.scalar_matrix(1, rows, cols)
+    def ones(self, shape):
+        return self.scalar_matrix(1, shape)
 
     # A matrix with all entries equal to the given scalar value.
     @abc.abstractmethod
-    def scalar_matrix(self, value, rows, cols):
+    def scalar_matrix(self, value, shape):
         return NotImplemented
 
     # Return the value at the given index in the matrix.
     def index(self, matrix, key):
         value = matrix[key]
         # Reduce to a scalar if possible.
-        if cvxpy.interface.matrix_utilities.size(value) == (1, 1):
+        if cvxpy.interface.matrix_utilities.shape(value) == (1, 1):
             return cvxpy.interface.matrix_utilities.scalar_value(value)
         else:
             return value
 
     # Coerce the matrix into the given shape.
     @abc.abstractmethod
-    def reshape(self, matrix, size):
+    def reshape(self, matrix, shape):
         return NotImplemented
 
     def block_add(self, matrix, block, vert_offset, horiz_offset, rows, cols,

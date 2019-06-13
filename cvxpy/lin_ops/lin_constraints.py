@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-"""
 
+THIS FILE IS DEPRECATED AND MAY BE REMOVED WITHOUT WARNING!
+DO NOT CALL THESE FUNCTIONS IN YOUR CODE!
+"""
 from collections import namedtuple
 
 # Constraints with linear expressions.
@@ -21,8 +23,8 @@ from collections import namedtuple
 # expr == 0
 LinEqConstr = namedtuple("LinEqConstr", ["expr",
                                          "constr_id",
-                                         "size"])
+                                         "shape"])
 # expr <= 0
 LinLeqConstr = namedtuple("LinLeqConstr", ["expr",
                                            "constr_id",
-                                           "size"])
+                                           "shape"])

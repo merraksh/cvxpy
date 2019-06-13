@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,4 +18,5 @@ from cvxpy.atoms.elementwise.power import power
 
 
 def square(x):
+    """The square of an expression."""
     return power(x, 2)

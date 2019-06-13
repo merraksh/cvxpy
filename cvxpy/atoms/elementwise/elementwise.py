@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,17 +26,24 @@ class Elementwise(Atom):
     """ Abstract base class for elementwise atoms. """
     __metaclass__ = abc.ABCMeta
 
-    def size_from_args(self):
-        """Size is the same as the sum of the arguments.
+    def shape_from_args(self):
+        """Shape is the same as the sum of the arguments.
         """
-        return u.shape.sum_shapes([arg.size for arg in self.args])
+        return u.shape.sum_shapes([arg.shape for arg in self.args])
 
     def validate_arguments(self):
         """
         Verify that all the shapes are the same
         or can be promoted.
         """
-        u.shape.sum_shapes([arg.size for arg in self.args])
+        u.shape.sum_shapes([arg.shape for arg in self.args])
+        super(Elementwise, self).validate_arguments()
+
+    def is_symmetric(self):
+        """Is the expression symmetric?
+        """
+        symm_args = all(arg.is_symmetric() for arg in self.args)
+        return self.shape[0] == self.shape[1] and symm_args
 
     @staticmethod
     def elemwise_grad_to_diag(value, rows, cols):
@@ -49,26 +56,26 @@ class Elementwise(Atom):
             A SciPy CSC sparse matrix.
         """
         if not np.isscalar(value):
-            value = value.A.ravel(order='F')
+            value = value.ravel(order='F')
         return sp.dia_matrix((value, [0]), shape=(rows, cols)).tocsc()
 
     @staticmethod
-    def _promote(arg, size):
+    def _promote(arg, shape):
         """Promotes the lin op if necessary.
 
         Parameters
         ----------
         arg : LinOp
             LinOp to promote.
-        size : tuple
-            The size desired.
+        shape : tuple
+            The shape desired.
 
         Returns
         -------
         tuple
             Promoted LinOp.
         """
-        if arg.size != size:
-            return lu.promote(arg, size)
+        if arg.shape != shape:
+            return lu.promote(arg, shape)
         else:
             return arg

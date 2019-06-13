@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ INTERFACES = {np.ndarray: np_intf.NDArrayInterface(),
 # Default Numpy interface.
 DEFAULT_NP_INTF = INTERFACES[np.ndarray]
 # Default dense and sparse matrix interfaces.
-DEFAULT_INTF = INTERFACES[np.matrix]
+DEFAULT_INTF = INTERFACES[np.ndarray]
 DEFAULT_SPARSE_INTF = INTERFACES[sp.csc_matrix]
 
 
@@ -116,21 +116,21 @@ def is_sparse(constant):
 # Get the dimensions of the constant.
 
 
-def size(constant):
+def shape(constant):
     if isinstance(constant, numbers.Number) or np.isscalar(constant):
-        return (1, 1)
+        return tuple()
     elif isinstance(constant, list):
         if len(constant) == 0:
-            return (0, 0)
+            return (0,)
         elif isinstance(constant[0], numbers.Number):  # Vector
-            return (len(constant), 1)
+            return (len(constant),)
         else:  # Matrix
             return (len(constant[0]), len(constant))
     elif constant.__class__ in INTERFACES:
-        return INTERFACES[constant.__class__].size(constant)
+        return INTERFACES[constant.__class__].shape(constant)
     # Direct all sparse matrices to CSC interface.
     elif is_sparse(constant):
-        return INTERFACES[sp.csc_matrix].size(constant)
+        return INTERFACES[sp.csc_matrix].shape(constant)
     else:
         raise TypeError("%s is not a valid type for a Constant value." % type(constant))
 
@@ -138,19 +138,19 @@ def size(constant):
 
 
 def is_vector(constant):
-    return size(constant)[1] == 1
+    return shape(constant)[1] == 1
 
 # Is the constant a scalar?
 
 
 def is_scalar(constant):
-    return size(constant) == (1, 1)
+    return shape(constant) == (1, 1)
 
 
 def from_2D_to_1D(constant):
     """Convert 2D Numpy matrices or arrays to 1D.
     """
-    if isinstance(constant, np.ndarray):
+    if isinstance(constant, np.ndarray) and constant.ndim == 2:
         return np.asarray(constant)[:, 0]
     else:
         return constant
@@ -164,11 +164,23 @@ def from_1D_to_2D(constant):
     else:
         return constant
 
+
+def convert(constant, sparse=False, convert_scalars=False):
+    """Convert to appropriate type.
+    """
+    if isinstance(constant, (list, np.matrix)):
+        return DEFAULT_INTF.const_to_matrix(constant,
+                                            convert_scalars=convert_scalars)
+    elif sparse:
+        return DEFAULT_SPARSE_INTF.const_to_matrix(constant,
+                                                   convert_scalars=convert_scalars)
+    else:
+        return constant
+
 # Get the value of the passed constant, interpreted as a scalar.
 
 
 def scalar_value(constant):
-    assert is_scalar(constant)
     if isinstance(constant, numbers.Number) or np.isscalar(constant):
         return constant
     elif isinstance(constant, list):
@@ -191,8 +203,6 @@ def sign(constant):
     ----------
     constant : numeric type
         The numeric value to evaluate the sign of.
-    tol : float, optional
-        The largest (smallest) value considered positive (negative).
 
     Returns
     -------
@@ -211,6 +221,37 @@ def sign(constant):
         min_val = mat.min()
     return (min_val >= 0, max_val <= 0)
 
+
+def is_complex(constant, tol=1e-5):
+    """Return (is real, is imaginary).
+
+    Parameters
+    ----------
+    constant : numeric type
+        The numeric value to evaluate the sign of.
+    tol : float, optional
+        The largest magnitude considered nonzero.
+
+    Returns
+    -------
+    tuple
+        The sign of the constant.
+    """
+    complex_type = np.iscomplexobj(constant)
+    if not complex_type:
+        return True, False
+    if isinstance(constant, numbers.Number):
+        real_max = np.abs(np.real(constant))
+        imag_max = np.abs(np.imag(constant))
+    elif sp.issparse(constant):
+        real_max = np.abs(constant.real).max()
+        imag_max = np.abs(constant.imag).max()
+    else:  # Convert to Numpy array.
+        constant = INTERFACES[np.ndarray].const_to_matrix(constant)
+        real_max = np.abs(constant.real).max()
+        imag_max = np.abs(constant.imag).max()
+    return (real_max >= tol, imag_max >= tol)
+
 # Get the value at the given index.
 
 
@@ -224,3 +265,71 @@ def index(constant, key):
         interface = INTERFACES[sp.csc_matrix]
         constant = interface.const_to_matrix(constant)
         return interface.index(constant, key)
+
+
+def is_hermitian(constant):
+    """Check if a matrix is Hermitian and/or symmetric.
+    """
+    complex_type = np.iscomplexobj(constant)
+    if complex_type:
+        # TODO catch complex symmetric but not Hermitian?
+        is_symm = False
+        if sp.issparse(constant):
+            is_herm = is_sparse_symmetric(constant, complex=True)
+        else:
+            is_herm = np.allclose(constant, np.conj(constant.T))
+    else:
+        if sp.issparse(constant):
+            is_symm = is_sparse_symmetric(constant, complex=False)
+        else:
+            is_symm = np.allclose(constant, constant.T)
+        is_herm = is_symm
+    return is_symm, is_herm
+
+
+def is_sparse_symmetric(m, complex=False):
+    """Check if a sparse matrix is symmetric
+
+    Parameters
+    ----------
+    m : array or sparse matrix
+        A square matrix.
+
+    Returns
+    -------
+    check : bool
+        The check result.
+
+    """
+    # https://mail.scipy.org/pipermail/scipy-dev/2014-October/020101.html
+    if m.shape[0] != m.shape[1]:
+        raise ValueError('m must be a square matrix')
+
+    if not isinstance(m, sp.coo_matrix):
+        m = sp.coo_matrix(m)
+
+    r, c, v = m.row, m.col, m.data
+    tril_no_diag = r > c
+    triu_no_diag = c > r
+
+    if triu_no_diag.sum() != tril_no_diag.sum():
+        return False
+
+    rl = r[tril_no_diag]
+    cl = c[tril_no_diag]
+    vl = v[tril_no_diag]
+    ru = r[triu_no_diag]
+    cu = c[triu_no_diag]
+    vu = v[triu_no_diag]
+
+    sortl = np.lexsort((cl, rl))
+    sortu = np.lexsort((ru, cu))
+    vl = vl[sortl]
+    vu = vu[sortu]
+
+    if complex:
+        check = np.allclose(vl, np.conj(vu))
+    else:
+        check = np.allclose(vl, vu)
+
+    return check

@@ -20,8 +20,9 @@ import sys, os
 sys.path.insert(0, os.path.abspath('../..'))
 # To import sphinx extensions we've put in the repository:
 sys.path.insert(0, os.path.abspath('../sphinxext'))
+sys.path.append('/home/docs/checkouts/readthedocs.org/user_builds/cvxpy/checkouts/1.0/cvxpy')
 
-__version__ = "0.4.10"
+__version__ = "1.0.24"
 
 # -- General configuration -----------------------------------------------------
 
@@ -31,13 +32,12 @@ __version__ = "0.4.10"
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.autosummary',
               'sphinx.ext.doctest',
               'sphinx.ext.todo',
               'sphinx.ext.coverage',
               'sphinx.ext.mathjax',
               'sphinx.ext.viewcode',
-              'numpydoc']
+              'sphinx.ext.napoleon']
 
 # To suppress autodoc/numpydoc warning.
 # http://stackoverflow.com/questions/12206334/sphinx-autosummary-toctree-contains-reference-to-nonexisting-document-warnings
@@ -75,7 +75,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'CVXPY'
-copyright = u'2014, Steven Diamond, Eric Chu, Stephen Boyd'
+copyright = u'2019, The CVXPY authors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -146,7 +146,7 @@ html_theme_options = {
    'github_repo': 'cvxpy',
    'github_banner': True,
    'github_type': 'star',
-   'travis_button': True,
+   'travis_button': False,
    'analytics_id': 'UA-50248335-1',
 }
 
@@ -205,7 +205,7 @@ html_static_path = []
 #html_show_sphinx = True
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
-#html_show_copyright = True
+html_show_copyright = True
 
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the

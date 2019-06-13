@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,42 +19,64 @@ from cvxpy.atoms.affine.affine_atom import AffAtom
 import numpy as np
 
 
-class hstack(AffAtom):
+def hstack(arg_list):
+    """Horizontal concatenation of an arbitrary number of Expressions.
+
+    Parameters
+    ----------
+    arg_list : list of Expression
+        The Expressions to concatenate.
+    """
+    arg_list = [AffAtom.cast_to_const(arg) for arg in arg_list]
+    for idx, arg in enumerate(arg_list):
+        if arg.ndim == 0:
+            arg_list[idx] = arg.flatten()
+    return Hstack(*arg_list)
+
+
+class Hstack(AffAtom):
     """ Horizontal concatenation """
-    # Can take a single list as input.
-    def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], list):
-            args = args[0]
-        super(hstack, self).__init__(*args)
+    def is_atom_log_log_convex(self):
+        return True
+
+    def is_atom_log_log_concave(self):
+        return True
 
     # Returns the hstack of the values.
-    @AffAtom.numpy_numeric
     def numeric(self, values):
         return np.hstack(values)
 
-    # The shape is the common height and the sum of the widths.
-    def size_from_args(self):
-        cols = sum(arg.size[1] for arg in self.args)
-        rows = self.args[0].size[0]
-        return (rows, cols)
+    # The shape is the common width and the sum of the heights.
+    def shape_from_args(self):
+        if self.args[0].ndim == 1:
+            return (sum(arg.size for arg in self.args),)
+        else:
+            cols = sum(arg.shape[1] for arg in self.args)
+            return (self.args[0].shape[0], cols) + self.args[0].shape[2:]
 
-    # All arguments must have the same height.
+    # All arguments must have the same width.
     def validate_arguments(self):
-        arg_cols = [arg.size[0] for arg in self.args]
-        if max(arg_cols) != min(arg_cols):
-            raise TypeError(("All arguments to hstack must have "
-                             "the same number of rows."))
+        model = self.args[0].shape
+        error = ValueError(("All the input dimensions except"
+                            " for axis 1 must match exactly."))
+        for arg in self.args[1:]:
+            if len(arg.shape) != len(model):
+                raise error
+            elif len(model) > 1:
+                for i in range(len(model)):
+                    if i != 1 and arg.shape[i] != model[i]:
+                        raise error
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Stack the expressions horizontally.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -63,4 +85,4 @@ class hstack(AffAtom):
         tuple
             (LinOp for objective, list of constraints)
         """
-        return (lu.hstack(arg_objs, size), [])
+        return (lu.hstack(arg_objs, shape), [])

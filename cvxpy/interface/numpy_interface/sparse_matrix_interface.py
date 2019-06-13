@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ class SparseMatrixInterface(NDArrayInterface):
         # Convert cvxopt sparse to coo matrix.
         if isinstance(value, list):
             return sp.csc_matrix(value, dtype=np.double).T
-        return sp.csc_matrix(value, dtype=np.double)
+        return sp.csc_matrix(value, dtype=value.dtype)
 
     def identity(self, size):
         """Return an identity matrix.

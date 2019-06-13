@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy.atoms import *
+from cvxpy.expressions.expression import Expression
 from cvxpy.constraints.constraint import Constraint
-from cvxpy.expressions.expression import *
-from cvxpy.expressions.constants import *
-from cvxpy.expressions.variables import Variable
-from cvxpy.problems.objective import *
-from cvxpy.problems.problem import Problem
+from cvxpy.expressions.variable import Variable
 import cvxpy.interface.matrix_utilities as intf
 import numpy
 import scipy.sparse as sp
@@ -32,11 +28,11 @@ PY35 = sys.version_info >= (3, 5)
 class TestMatrices(unittest.TestCase):
     """ Unit tests for testing different forms of matrices as constants. """
 
-    def assertExpression(self, expr, size):
-        """Asserts that expr is an Expression with dimension size.
+    def assertExpression(self, expr, shape):
+        """Asserts that expr is an Expression with dimension shape.
         """
         assert isinstance(expr, Expression) or isinstance(expr, Constraint)
-        self.assertEqual(expr.size, size)
+        self.assertEqual(expr.shape, shape)
 
     def setUp(self):
         self.a = Variable(name='a')
@@ -47,27 +43,27 @@ class TestMatrices(unittest.TestCase):
         self.y = Variable(3, name='y')
         self.z = Variable(2, name='z')
 
-        self.A = Variable(2, 2, name='A')
-        self.B = Variable(2, 2, name='B')
-        self.C = Variable(3, 2, name='C')
+        self.A = Variable((2, 2), name='A')
+        self.B = Variable((2, 2), name='B')
+        self.C = Variable((3, 2), name='C')
 
     # Test numpy arrays
     def test_numpy_arrays(self):
         # Vector
-        v = numpy.arange(2).reshape((2, 1))
-        self.assertExpression(self.x + v, (2, 1))
-        self.assertExpression(v + self.x, (2, 1))
-        self.assertExpression(self.x - v, (2, 1))
-        self.assertExpression(v - self.x, (2, 1))
-        self.assertExpression(self.x <= v, (2, 1))
-        self.assertExpression(v <= self.x, (2, 1))
-        self.assertExpression(self.x == v, (2, 1))
-        self.assertExpression(v == self.x, (2, 1))
+        v = numpy.arange(2)
+        self.assertExpression(self.x + v, (2,))
+        self.assertExpression(v + self.x, (2,))
+        self.assertExpression(self.x - v, (2,))
+        self.assertExpression(v - self.x, (2,))
+        self.assertExpression(self.x <= v, (2,))
+        self.assertExpression(v <= self.x, (2,))
+        self.assertExpression(self.x == v, (2,))
+        self.assertExpression(v == self.x, (2,))
         # Matrix
         A = numpy.arange(8).reshape((4, 2))
-        self.assertExpression(A*self.x, (4, 1))
+        self.assertExpression(A*self.x, (4,))
         if PY35:
-            self.assertExpression(self.x.__rmatmul__(A), (4, 1))
+            self.assertExpression(self.x.__rmatmul__(A), (4,))
         # PSD inequalities.
         A = numpy.ones((2, 2))
         self.assertExpression(A << self.A, (2, 2))
@@ -76,38 +72,38 @@ class TestMatrices(unittest.TestCase):
     # Test numpy matrices
     def test_numpy_matrices(self):
         # Vector
-        v = numpy.matrix(numpy.arange(2).reshape((2, 1)))
-        self.assertExpression(self.x + v, (2, 1))
-        self.assertExpression(v + v + self.x, (2, 1))
-        self.assertExpression(self.x - v, (2, 1))
-        self.assertExpression(v - v - self.x, (2, 1))
-        self.assertExpression(self.x <= v, (2, 1))
-        self.assertExpression(v <= self.x, (2, 1))
-        self.assertExpression(self.x == v, (2, 1))
-        self.assertExpression(v == self.x, (2, 1))
+        v = numpy.arange(2)
+        self.assertExpression(self.x + v, (2,))
+        self.assertExpression(v + v + self.x, (2,))
+        self.assertExpression(self.x - v, (2,))
+        self.assertExpression(v - v - self.x, (2,))
+        self.assertExpression(self.x <= v, (2,))
+        self.assertExpression(v <= self.x, (2,))
+        self.assertExpression(self.x == v, (2,))
+        self.assertExpression(v == self.x, (2,))
         # Matrix
-        A = numpy.matrix(numpy.arange(8).reshape((4, 2)))
-        self.assertExpression(A*self.x, (4, 1))
-        self.assertExpression((A.T*A) * self.x, (2, 1))
+        A = numpy.arange(8).reshape((4, 2))
+        self.assertExpression(A*self.x, (4,))
+        self.assertExpression((A.T.dot(A)) * self.x, (2,))
         if PY35:
-            self.assertExpression(self.x.__rmatmul__(A), (4, 1))
+            self.assertExpression(self.x.__rmatmul__(A), (4,))
         # PSD inequalities.
-        A = numpy.matrix(numpy.ones((2, 2)))
+        A = numpy.ones((2, 2))
         self.assertExpression(A << self.A, (2, 2))
         self.assertExpression(A >> self.A, (2, 2))
 
     def test_numpy_scalars(self):
         """Test numpy scalars."""
         v = numpy.float64(2.0)
-        self.assertExpression(self.x + v, (2, 1))
-        self.assertExpression(v + self.x, (2, 1))
-        self.assertExpression(v * self.x, (2, 1))
-        self.assertExpression(self.x - v, (2, 1))
-        self.assertExpression(v - v - self.x, (2, 1))
-        self.assertExpression(self.x <= v, (2, 1))
-        self.assertExpression(v <= self.x, (2, 1))
-        self.assertExpression(self.x == v, (2, 1))
-        self.assertExpression(v == self.x, (2, 1))
+        self.assertExpression(self.x + v, (2,))
+        self.assertExpression(v + self.x, (2,))
+        self.assertExpression(v * self.x, (2,))
+        self.assertExpression(self.x - v, (2,))
+        self.assertExpression(v - v - self.x, (2,))
+        self.assertExpression(self.x <= v, (2,))
+        self.assertExpression(v <= self.x, (2,))
+        self.assertExpression(self.x == v, (2,))
+        self.assertExpression(v == self.x, (2,))
         # PSD inequalities.
         self.assertExpression(v << self.A, (2, 2))
         self.assertExpression(v >> self.A, (2, 2))
@@ -144,7 +140,7 @@ class TestMatrices(unittest.TestCase):
     def test_scipy_sparse(self):
         """Test scipy sparse matrices."""
         # Constants.
-        A = numpy.matrix(numpy.arange(8).reshape((4, 2)))
+        A = numpy.arange(8).reshape((4, 2))
         A = sp.csc_matrix(A)
         A = sp.eye(2).tocsc()
         key = (slice(0, 1, None), slice(None, None, None))
@@ -155,8 +151,8 @@ class TestMatrices(unittest.TestCase):
         self.assertEqual(Aidx[0, 1], 0)
 
         # Linear ops.
-        var = Variable(4, 2)
-        A = numpy.matrix(numpy.arange(8).reshape((4, 2)))
+        var = Variable((4, 2))
+        A = numpy.arange(8).reshape((4, 2))
         A = sp.csc_matrix(A)
         B = sp.hstack([A, A])
         self.assertExpression(var + A, (4, 2))

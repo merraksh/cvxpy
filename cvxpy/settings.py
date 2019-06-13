@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,30 +38,35 @@ INFEASIBLE = "infeasible"
 INFEASIBLE_INACCURATE = "infeasible_inaccurate"
 UNBOUNDED = "unbounded"
 UNBOUNDED_INACCURATE = "unbounded_inaccurate"
+USER_LIMIT = "user_limit"
 SOLVER_ERROR = "solver_error"
 # Statuses that indicate a solution was found.
 SOLUTION_PRESENT = [OPTIMAL, OPTIMAL_INACCURATE]
 # Statuses that indicate the problem is infeasible or unbounded.
 INF_OR_UNB = [INFEASIBLE, INFEASIBLE_INACCURATE,
               UNBOUNDED, UNBOUNDED_INACCURATE]
+# Statuses that indicate an error.
+ERROR = [USER_LIMIT, SOLVER_ERROR]
 
 # Solver names.
 CVXOPT = "CVXOPT"
 GLPK = "GLPK"
 GLPK_MI = "GLPK_MI"
 CBC = "CBC"
+CPLEX = "CPLEX"
 ECOS = "ECOS"
 ECOS_BB = "ECOS_BB"
 SCS = "SCS"
+SUPER_SCS = "SUPER_SCS"
 GUROBI = "GUROBI"
+OSQP = "OSQP"
+CPLEX = "CPLEX"
 ELEMENTAL = "ELEMENTAL"
 MOSEK = "MOSEK"
-LS = "LS"
-JULIA_OPT = "JULIA_OPT"
 XPRESS = "XPRESS"
 SOLVERS = [ECOS, ECOS_BB, CVXOPT, GLPK,
-           GLPK_MI, SCS, GUROBI, ELEMENTAL,
-           MOSEK, LS, JULIA_OPT, XPRESS]
+           GLPK_MI, SCS, GUROBI, OSQP, CPLEX,
+           MOSEK, CBC, XPRESS, SUPER_SCS]
 
 # Xpress-specific items
 XPRESS_IIS = "XPRESS_IIS"
@@ -74,13 +79,15 @@ PARALLEL = "parallel"
 ROBUST_KKTSOLVER = "robust"
 
 # Map of constraint types.
-EQ, LEQ, SOC, SOC_EW, SDP, EXP, BOOL, INT = range(8)
+# TODO(akshayka): These should be defined in a solver module.
+EQ, LEQ, SOC, SOC_EW, PSD, EXP, BOOL, INT = range(8)
 
 # Keys in the dictionary of cone dimensions.
+# TODO(akshayka): These should be defined in a solver module.
 EQ_DIM = "f"
 LEQ_DIM = "l"
 SOC_DIM = "q"
-SDP_DIM = "s"
+PSD_DIM = "s"
 EXP_DIM = "ep"
 # Keys for non-convex constraints.
 BOOL_IDS = "bool_ids"
@@ -102,6 +109,8 @@ NUM_ITERS = "num_iters"  # number of iterations
 # Keys for problem data dict.
 C = "c"
 OFFSET = "offset"
+P = "P"
+Q = "q"
 A = "A"
 B = "b"
 G = "G"
@@ -116,7 +125,20 @@ CONSTANT = "CONSTANT"
 AFFINE = "AFFINE"
 CONVEX = "CONVEX"
 CONCAVE = "CONCAVE"
+QUASILINEAR = "QUASILINEAR"
+QUASICONVEX = "QUASICONVEX"
+QUASICONCAVE = "QUASICONCAVE"
+LOG_LOG_CONSTANT = "LOG-LOG CONSTANT"
+LOG_LOG_AFFINE = "LOG-LOG AFFINE"
+LOG_LOG_CONVEX = "LOG-LOG CONVEX"
+LOG_LOG_CONCAVE = "LOG-LOG CONCAVE"
 ZERO = "ZERO"
-POSITIVE = "POSITIVE"
-NEGATIVE = "NEGATIVE"
+NONNEG = "NONNEGATIVE"
+NONPOS = "NONPOSITIVE"
 UNKNOWN = "UNKNOWN"
+
+# Numerical tolerances
+EIGVAL_TOL = 1e-10
+PSD_NSD_PROJECTION_TOL = 1e-8
+GENERAL_PROJECTION_TOL = 1e-10
+SPARSE_PROJECTION_TOL = 1e-10

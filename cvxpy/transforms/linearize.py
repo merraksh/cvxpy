@@ -19,10 +19,19 @@ from cvxpy.expressions.constants import Constant
 
 
 def linearize(expr):
-    """Returns the tangent approximation to the expression.
+    """Returns an affine approximation to the expression computed at the variable/parameter values.
 
     Gives an elementwise lower (upper) bound for convex (concave)
-    expressions. No guarantees for non-DCP expressions.
+    expressions that is tight at the current variable/parameter values.
+    No guarantees for non-DCP expressions.
+
+    If f and g are convex, the objective f - g can be (heuristically) minimized using
+    the implementation below of the convex-concave method:
+
+    .. code :: python
+
+        for iters in range(N):
+            Problem(Minimize(f - linearize(g))).solve()
 
     Returns None if cannot be linearized.
 
@@ -47,7 +56,7 @@ def linearize(expr):
                 return None
             elif var.is_matrix():
                 flattened = Constant(grad_map[var]).T*vec(var - var.value)
-                tangent = tangent + reshape(flattened, *expr.size)
+                tangent = tangent + reshape(flattened, expr.shape)
             else:
                 tangent = tangent + Constant(grad_map[var]).T*(var - var.value)
         return tangent

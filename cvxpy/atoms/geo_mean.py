@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,12 +15,10 @@ limitations under the License.
 """
 
 from cvxpy.atoms.atom import Atom
-from cvxpy.atoms.affine.index import index
 import numpy as np
 import scipy.sparse as sp
-from ..utilities.power_tools import (fracify, decompose, approx_error, lower_bound,
-                                     over_bound, prettydict, gm_constrs)
-import cvxpy.lin_ops.lin_utils as lu
+from cvxpy.utilities.power_tools import (fracify, decompose, approx_error, lower_bound,
+                                         over_bound, prettydict)
 
 
 class geo_mean(Atom):
@@ -28,7 +26,7 @@ class geo_mean(Atom):
 
     .. math::
 
-        \\left(x_1^{p_1} \cdots x_n^{p_n} \\right)^{\\frac{1}{\mathbf{1}^Tp}}
+        \\left(x_1^{p_1} \\cdots x_n^{p_n} \\right)^{\\frac{1}{\\mathbf{1}^Tp}}
 
     The powers ``p`` can be a ``list``, ``tuple``, or ``numpy.array`` of nonnegative
     ``int``, ``float``, or ``Fraction`` objects with nonzero sum.
@@ -38,15 +36,15 @@ class geo_mean(Atom):
 
     .. math::
 
-        x_1^{1/n} \cdots x_n^{1/n}.
+        x_1^{1/n} \\cdots x_n^{1/n}.
 
-    The geometric mean includes an implicit constraint that :math:`x_i \geq 0`
+    The geometric mean includes an implicit constraint that :math:`x_i \\geq 0`
     whenever :math:`p_i > 0`. If :math:`p_i = 0`, :math:`x_i` will be unconstrained.
 
     The only exception to this rule occurs when
     ``p`` has exactly one nonzero element, say, ``p_i``, in which case
     ``geo_mean(x, p)`` is equivalent to ``x_i`` (without the nonnegativity constraint).
-    A specific case of this is when :math:`x \in \mathbf{R}^1`.
+    A specific case of this is when :math:`x \\in \\mathbf{R}^1`.
 
 
     .. note::
@@ -55,12 +53,12 @@ class geo_mean(Atom):
         i.e., fractional, **approximation** must be made.
 
         Internally, ``geo_mean`` immediately computes an approximate normalized
-        weight vector :math:`w \\approx p/\mathbf{1}^Tp`
+        weight vector :math:`w \\approx p/\\mathbf{1}^Tp`
         and the ``geo_mean`` atom is represented as
 
         .. math::
 
-            x_1^{w_1} \cdots x_n^{w_n},
+            x_1^{w_1} \\cdots x_n^{w_n},
 
         where the elements of ``w`` are ``Fraction`` objects that sum to exactly 1.
 
@@ -140,7 +138,7 @@ class geo_mean(Atom):
 
     Parameters
     ----------
-    x : cvxpy.Variable
+    x : Variable
         A column or row vector whose elements we will take the geometric mean of.
 
     p : Sequence (list, tuple, ...) of ``int``, ``float``, or ``Fraction`` objects
@@ -164,7 +162,7 @@ class geo_mean(Atom):
         A rational approximation of ``p/sum(p)``.
     approx_error : float
         The error in approximating ``p/sum(p)`` with ``w``, given by
-        :math:`\|p/\mathbf{1}^T p - w \|_\infty`
+        :math:`\\|p/\\mathbf{1}^T p - w \\|_\\infty`
     """
 
     def __init__(self, x, p=None, max_denom=1024):
@@ -200,15 +198,14 @@ class geo_mean(Atom):
         super(geo_mean, self).__init__(x)
 
         x = self.args[0]
-        if x.size[0] == 1:
-            n = x.size[1]
-        elif x.size[1] == 1:
-            n = x.size[0]
+        if x.is_vector():
+            n = 1 if x.ndim == 0 else max(x.shape)
         else:
             raise ValueError('x must be a row or column vector.')
 
         if p is None:
             p = [1]*n
+        self.p = p
 
         if len(p) != n:
             raise ValueError('x and p must have the same number of elements.')
@@ -231,7 +228,6 @@ class geo_mean(Atom):
         self.cone_num = self.cone_lb + self.cone_num_over
 
     # Returns the (weighted) geometric mean of the elements of x.
-    @Atom.numpy_numeric
     def numeric(self, values):
         values = np.array(values[0]).flatten()
         val = 1.0
@@ -257,14 +253,14 @@ class geo_mean(Atom):
         Returns:
             A list of SciPy CSC sparse matrices or None.
         """
-        x = np.matrix(values[0])
+        x = np.array(values[0])
         # No special case when only one non-zero weight.
         w_arr = np.array([float(w_i) for w_i in self.w])
         # Outside domain.
         if np.any(x[w_arr > 0] <= 0):
             return [None]
         else:
-            D = w_arr/x.A.ravel(order='F')*self.numeric(values)
+            D = w_arr/x.ravel(order='F')*self.numeric(values)
             return [sp.csc_matrix(D).T]
 
     def name(self):
@@ -275,10 +271,10 @@ class geo_mean(Atom):
     def pretty_tree(self):
         print(prettydict(self.tree))
 
-    def size_from_args(self):
-        """Returns the (row, col) size of the expression.
+    def shape_from_args(self):
+        """Returns the (row, col) shape of the expression.
         """
-        return (1, 1)
+        return tuple()
 
     def sign_from_args(self):
         """Returns sign (is positive, is negative) of the expression.
@@ -296,6 +292,16 @@ class geo_mean(Atom):
         """
         return True
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
+
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
         """
@@ -306,15 +312,10 @@ class geo_mean(Atom):
         """
         return False
 
-    def validate_arguments(self):
-        # since correctly validating arguments with this function is tricky,
-        # we do it in __init__ instead.
-        pass
-
     def get_data(self):
         return [self.w, self.w_dyad, self.tree]
 
-    def copy(self, args=None):
+    def copy(self, args=None, id_objects={}):
         """Returns a shallow copy of the geo_mean atom.
 
         Parameters
@@ -339,35 +340,3 @@ class geo_mean(Atom):
         copy.cone_num_over = self.cone_num_over
         copy.cone_num = self.cone_num
         return copy
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        w, w_dyad, tree = data
-        t = lu.create_var((1, 1))
-
-        if arg_objs[0].size[1] == 1:
-            x_list = [index.get_index(arg_objs[0], [], i, 0) for i in range(len(w))]
-        if arg_objs[0].size[0] == 1:
-            x_list = [index.get_index(arg_objs[0], [], 0, i) for i in range(len(w))]
-
-        # todo: catch cases where we have (0, 0, 1)?
-        # todo: what about curvature case (should be affine) in trivial case of (0, 0 , 1),
-        # should this behavior match with what we do in power?
-
-        return t, gm_constrs(t, x_list, w)

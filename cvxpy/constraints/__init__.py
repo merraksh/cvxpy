@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy.constraints.bool_constr import BoolConstr
-from cvxpy.constraints.eq_constraint import EqConstraint
+from cvxpy.constraints.zero import Equality, Zero
 from cvxpy.constraints.exponential import ExpCone
-from cvxpy.constraints.int_constr import IntConstr
-from cvxpy.constraints.leq_constraint import LeqConstraint
-from cvxpy.constraints.psd_constraint import PSDConstraint
+from cvxpy.constraints.nonpos import Inequality, NonPos
+from cvxpy.constraints.psd import PSD
 from cvxpy.constraints.second_order import SOC
-from cvxpy.constraints.semidefinite import SDP
 from cvxpy.constraints.soc_axis import SOC_Axis

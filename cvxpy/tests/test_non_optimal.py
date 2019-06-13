@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy import *
-import numpy as np
+import cvxpy as cp
 from cvxpy.tests.base_test import BaseTest
 
 
@@ -25,52 +24,52 @@ class TestNonOptimal(BaseTest):
     def test_scalar_lp(self):
         """Test scalar LP problems.
         """
-        x1 = Variable()
-        x2 = Variable()
-        obj = Minimize(-x1-x2)
+        x1 = cp.Variable()
+        x2 = cp.Variable()
+        obj = cp.Minimize(-x1-x2)
         constraints = [2*x1 + x2 >= 1, x1 + 3*x2 >= 1, x1 >= 0, x2 >= 0]
-        p_unb = Problem(obj, constraints)
-        p_inf = Problem(Minimize(x1), [0 <= x1, x1 <= -1])
-        for solver in [ECOS, CVXOPT, SCS]:
-            if CVXOPT in installed_solvers():
+        p_unb = cp.Problem(obj, constraints)
+        p_inf = cp.Problem(cp.Minimize(x1), [0 <= x1, x1 <= -1])
+        for solver in [cp.ECOS, cp.CVXOPT, cp.SCS]:
+            if cp.CVXOPT in cp.installed_solvers():
                 print(solver)
                 p_unb.solve(solver=solver)
-                self.assertEqual(p_unb.status, UNBOUNDED)
+                self.assertEqual(p_unb.status, cp.UNBOUNDED)
                 p_inf.solve(solver=solver)
-                self.assertEqual(p_inf.status, INFEASIBLE)
+                self.assertEqual(p_inf.status, cp.INFEASIBLE)
 
     def test_vector_lp(self):
         """Test vector LP problems.
         """
         # Infeasible and unbounded problems.
-        x = Variable(5)
-        p_inf = Problem(Minimize(sum_entries(x)),
-                        [x >= 1,
-                         x <= 0])
-        p_unb = Problem(Minimize(sum_entries(x)), [x <= 1])
-        for solver in [ECOS, CVXOPT, SCS]:
-            if CVXOPT in installed_solvers():
+        x = cp.Variable(5)
+        p_inf = cp.Problem(cp.Minimize(cp.sum(x)),
+                           [x >= 1,
+                           x <= 0])
+        p_unb = cp.Problem(cp.Minimize(cp.sum(x)), [x <= 1])
+        for solver in [cp.ECOS, cp.CVXOPT, cp.SCS]:
+            if cp.CVXOPT in cp.installed_solvers():
                 print(solver)
                 p_inf.solve(solver=solver)
-                self.assertEqual(p_inf.status, INFEASIBLE)
+                self.assertEqual(p_inf.status, cp.INFEASIBLE)
                 p_unb.solve(solver=solver)
-                self.assertEqual(p_unb.status, UNBOUNDED)
+                self.assertEqual(p_unb.status, cp.UNBOUNDED)
 
-    def test_inaccurate(self):
-        """Test the optimal inaccurate status.
-        """
-        x = Variable(5)
-        prob = Problem(Maximize(sum_entries(sqrt(x))), [x <= 0])
-        result = prob.solve(solver=SCS)
-        self.assertEqual(prob.status, OPTIMAL_INACCURATE)
-        assert result is not None
+    # def test_inaccurate(self):
+    #     """Test the optimal inaccurate status.
+    #     """
+    #     x = Variable(5)
+    #     prob = Problem(Maximize(sum(sqrt(x))), [x <= 0])
+    #     result = prob.solve(solver=SCS)
+    #     self.assertEqual(prob.status, OPTIMAL_INACCURATE)
+    #     assert result is not None
 
     # def test_socp(self):
     #     """Test SOCP problems.
     #     """
     #     # Infeasible and unbounded problems.
     #     x = Variable(5)
-    #     obj = Maximize(sum_entries(sqrt(x)))
+    #     obj = Maximize(sum(sqrt(x)))
     #     p_inf = Problem(obj,
     #                     [x >= 1,
     #                      x <= 0])
@@ -83,7 +82,7 @@ class TestNonOptimal(BaseTest):
     #         self.assertEqual(p_unb.status, UNBOUNDED)
 
     # def test_scp(self):
-    #     """Test SDP problems.
+    #     """Test PSD problems.
     #     """
     #     # Infeasible and unbounded problems.
     #     X = Variable(5, 5)

@@ -1,4 +1,20 @@
 """
+Copyright 2013 Steven Diamond
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+"""
 This script finds a PSD matrix that is closest to a given symmetric,
 real matrix, as measured by the Frobenius norm. That is, for
 a given matrix P, it solves:
@@ -24,17 +40,16 @@ required to be PSD (instead of also Toeplitz)
 
 import cvxpy as cp
 import numpy as np
-import cvxopt
 
 # create data P
-P = cp.Parameter(3,3)
-Z = cp.semidefinite(3)
+P = cp.Parameter((3,3))
+Z = cp.Variable((3,3), PSD=True)
 
 objective = cp.Minimize( cp.lambda_max(P) - cp.lambda_min(P - Z) )
 prob = cp.Problem(objective, [Z >= 0])
-P.value = cvxopt.matrix(np.matrix('4 1 3; 1 3.5 0.8; 3 0.8 1'))
+P.value = np.matrix('4 1 3; 1 3.5 0.8; 3 0.8 1')
 prob.solve()
-print "optimal value =", prob.value
+print("optimal value =", prob.value)
 
 
 # [ 4,     1+2*j,     3-j       ; ...

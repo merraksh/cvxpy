@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ limitations under the License.
 from cvxpy.expressions.expression import Expression
 from cvxpy.atoms.norm import norm
 from cvxpy.atoms.affine.vstack import vstack
-from cvxpy.atoms.affine.sum_entries import sum_entries
+from cvxpy.atoms.affine.sum import sum
 from cvxpy.atoms.affine.reshape import reshape
 
 
@@ -39,19 +39,15 @@ def tv(value, *args):
     Expression
         An Expression representing the total variation.
     """
-    # Accept single list as argument.
-    if isinstance(value, list) and len(args) == 0:
-        args = value[1:]
-        value = value[0]
     value = Expression.cast_to_const(value)
-    rows, cols = value.size
-    if value.is_scalar():
+    if value.ndim == 0:
         raise ValueError("tv cannot take a scalar argument.")
     # L1 norm for vectors.
-    elif value.is_vector():
-        return norm(value[1:] - value[0:max(rows, cols)-1], 1)
+    elif value.ndim == 1:
+        return norm(value[1:] - value[0:value.shape[0]-1], 1)
     # L2 norm for matrices.
     else:
+        rows, cols = value.shape
         args = map(Expression.cast_to_const, args)
         values = [value] + list(args)
         diffs = []
@@ -60,6 +56,6 @@ def tv(value, *args):
                 mat[0:rows-1, 1:cols] - mat[0:rows-1, 0:cols-1],
                 mat[1:rows, 0:cols-1] - mat[0:rows-1, 0:cols-1],
             ]
-        length = diffs[0].size[0]*diffs[1].size[1]
-        stacked = vstack(*[reshape(diff, 1, length) for diff in diffs])
-        return sum_entries(norm(stacked, p='fro', axis=0))
+        length = diffs[0].shape[0]*diffs[1].shape[1]
+        stacked = vstack([reshape(diff, (1, length)) for diff in diffs])
+        return sum(norm(stacked, p=2, axis=0))

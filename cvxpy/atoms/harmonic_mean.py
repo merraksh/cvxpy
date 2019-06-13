@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,10 +15,28 @@ limitations under the License.
 """
 
 from cvxpy.atoms.pnorm import pnorm
-import numpy as np
 from cvxpy.expressions.expression import Expression
 
 
 def harmonic_mean(x):
+    """The harmonic mean of ``x``.
+
+    Parameters
+    ----------
+    x : Expression or numeric
+        The expression whose harmonic mean is to be computed. Must have
+        positive entries.
+
+    Returns
+    -------
+    Expression
+        .. math::
+            \\frac{n}{\\left(\\sum_{i=1}^{n} x_i^{-1} \\right)},
+
+        where :math:`n` is the length of :math:`x`.
+    """
     x = Expression.cast_to_const(x)
-    return np.prod(x.size)*pnorm(x, -1)
+    # TODO(akshayka): Behavior of the below is incorrect when x has negative
+    # entries. Either fail fast or provide a correct expression with
+    # unknown curvature.
+    return x.size*pnorm(x, -1)

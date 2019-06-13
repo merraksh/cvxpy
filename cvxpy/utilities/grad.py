@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,8 +32,8 @@ def constant_grad(expr):
     """
     grad = {}
     for var in expr.variables():
-        rows = var.size[0]*var.size[1]
-        cols = expr.size[0]*expr.size[1]
+        rows = var.size
+        cols = expr.size
         # Scalars -> 0
         if (rows, cols) == (1, 1):
             grad[var] = 0.0

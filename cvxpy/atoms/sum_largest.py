@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ limitations under the License.
 
 from cvxpy.atoms.atom import Atom
 import cvxpy.interface as intf
-import cvxpy.lin_ops.lin_utils as lu
 import numpy as np
 import scipy.sparse as sp
 
@@ -34,12 +33,12 @@ class sum_largest(Atom):
         """
         if int(self.k) != self.k or self.k <= 0:
             raise ValueError("Second argument must be a positive integer.")
+        super(sum_largest, self).validate_arguments()
 
-    @Atom.numpy_numeric
     def numeric(self, values):
         """Returns the sum of the k largest entries of the matrix.
         """
-        value = intf.from_2D_to_1D(values[0].flatten().T)
+        value = values[0].flatten()
         indices = np.argsort(-value)[:int(self.k)]
         return value[indices].sum()
 
@@ -57,20 +56,20 @@ class sum_largest(Atom):
         # Grad: 1 for each of k largest indices.
         value = intf.from_2D_to_1D(values[0].flatten().T)
         indices = np.argsort(-value)[:int(self.k)]
-        D = np.zeros((self.args[0].size[0]*self.args[0].size[1], 1))
+        D = np.zeros((self.args[0].shape[0]*self.args[0].shape[1], 1))
         D[indices] = 1
         return [sp.csc_matrix(D)]
 
-    def size_from_args(self):
-        """Returns the (row, col) size of the expression.
+    def shape_from_args(self):
+        """Returns the (row, col) shape of the expression.
         """
-        return (1, 1)
+        return tuple()
 
     def sign_from_args(self):
         """Returns sign (is positive, is negative) of the expression.
         """
         # Same as argument.
-        return (self.args[0].is_positive(), self.args[0].is_negative())
+        return (self.args[0].is_nonneg(), self.args[0].is_nonpos())
 
     def is_atom_convex(self):
         """Is the atom convex?
@@ -96,35 +95,3 @@ class sum_largest(Atom):
         """Returns the parameter k.
         """
         return [self.k]
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        # min sum_entries(t) + kq
-        # s.t. x <= t + q
-        #      0 <= t
-        x = arg_objs[0]
-        k = lu.create_const(data[0], (1, 1))
-        q = lu.create_var((1, 1))
-        t = lu.create_var(x.size)
-        sum_t = lu.sum_entries(t)
-        obj = lu.sum_expr([sum_t, lu.mul_expr(k, q, (1, 1))])
-        prom_q = lu.promote(q, x.size)
-        constr = [lu.create_leq(x, lu.sum_expr([t, prom_q])),
-                  lu.create_geq(t)]
-        return (obj, constr)

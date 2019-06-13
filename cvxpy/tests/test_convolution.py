@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond, Eric Chu
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy import *
+import cvxpy as cvx
 import cvxpy.settings as s
-from cvxpy.lin_ops.tree_mat import mul, tmul, prune_constants
+from cvxpy.lin_ops.tree_mat import prune_constants
 import cvxpy.problems.iterative as iterative
 from cvxpy.tests.base_test import BaseTest
 import numpy as np
@@ -29,24 +29,23 @@ class TestConvolution(BaseTest):
         """Test 1D convolution.
         """
         n = 3
-        x = Variable(n)
+        x = cvx.Variable(n)
         f = [1, 2, 3]
         g = [0, 1, 0.5]
         f_conv_g = [0., 1., 2.5,  4., 1.5]
-        expr = conv(f, g)
+        expr = cvx.conv(f, g)
         assert expr.is_constant()
-        self.assertEqual(expr.size, (5, 1))
+        self.assertEqual(expr.shape, (5, 1))
         self.assertItemsAlmostEqual(expr.value, f_conv_g)
 
-        expr = conv(f, x)
+        expr = cvx.conv(f, x)
         assert expr.is_affine()
-        self.assertEqual(expr.size, (5, 1))
+        self.assertEqual(expr.shape, (5, 1))
         # Matrix stuffing.
-        t = Variable()
-        prob = Problem(Minimize(norm(expr, 1)),
-                       [x == g])
+        prob = cvx.Problem(cvx.Minimize(cvx.norm(expr, 1)),
+                           [x == g])
         result = prob.solve()
-        self.assertAlmostEqual(result, sum(f_conv_g))
+        self.assertAlmostEqual(result, sum(f_conv_g), places=3)
         self.assertItemsAlmostEqual(expr.value, f_conv_g)
 
         # # Expression trees.
@@ -56,14 +55,13 @@ class TestConvolution(BaseTest):
         # self.assertAlmostEqual(result, 0, places=1)
 
     def prob_mat_vs_mul_funcs(self, prob):
-        data, dims = prob.get_problem_data(solver=SCS)
+        data, dims = prob.get_problem_data(solver=cvx.SCS)
         A = data["A"]
-        objective, constr_map, dims, solver = prob.canonicalize(SCS)
+        objective, constr_map, dims, solver = prob.canonicalize(cvx.SCS)
 
         all_ineq = constr_map[s.EQ] + constr_map[s.LEQ]
         var_offsets, var_sizes, x_length = prob._get_var_offsets(objective,
                                                                  all_ineq)
-        opts = {}
         constraints = constr_map[s.EQ] + constr_map[s.LEQ]
         constraints = prune_constants(constraints)
         Amul, ATmul = iterative.get_mul_funcs(constraints, dims,
@@ -73,7 +71,6 @@ class TestConvolution(BaseTest):
         # A*vec
         result = np.zeros(A.shape[0])
         Amul(vec, result)
-        mul_mat = self.mat_from_func(Amul, A.shape[0], A.shape[1])
         self.assertItemsAlmostEqual(A*vec, result)
         Amul(vec, result)
         self.assertItemsAlmostEqual(2*A*vec, result)
@@ -103,12 +100,11 @@ class TestConvolution(BaseTest):
     def test_conv_prob(self):
         """Test a problem with convolution.
         """
-        import cvxpy as cvx
         import numpy as np
         N = 5
-        y = np.asmatrix(np.random.randn(N, 1))
-        h = np.asmatrix(np.random.randn(2, 1))
+        y = np.random.randn(N, 1)
+        h = np.random.randn(2, 1)
         x = cvx.Variable(N)
         v = cvx.conv(h, x)
-        obj = cvx.Minimize(cvx.sum_entries(cvx.mul_elemwise(y, v[0:N])))
+        obj = cvx.Minimize(cvx.sum(cvx.multiply(y, v[0:N])))
         print(cvx.Problem(obj, []).solve())

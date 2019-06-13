@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import cvxpy.lin_ops.lin_utils as lu
 from cvxpy.atoms.elementwise.elementwise import Elementwise
 import numpy as np
-from cvxpy.utilities.power_tools import (is_power2, gm_constrs, pow_mid,
+from cvxpy.utilities.power_tools import (is_power2, pow_mid,
                                          pow_high, pow_neg)
 import scipy.sparse as sp
 
@@ -166,7 +165,7 @@ class power(Elementwise):
         """
         if self.p == 1:
             # Same as input.
-            return (self.args[0].is_positive(), self.args[0].is_negative())
+            return (self.args[0].is_nonneg(), self.args[0].is_nonpos())
         else:
             # Always positive.
             return (True, False)
@@ -183,6 +182,16 @@ class power(Elementwise):
         # p == 0 is affine here.
         return 0 <= self.p <= 1
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
+
     def is_constant(self):
         """Is the expression constant?
         """
@@ -195,7 +204,7 @@ class power(Elementwise):
             return True
         elif self.p > 1:
             if is_power2(self.p):
-                return self.args[idx].is_positive()
+                return self.args[idx].is_nonneg()
             else:
                 return True
         else:
@@ -208,7 +217,7 @@ class power(Elementwise):
             return True
         elif self.p > 1:
             if is_power2(self.p):
-                return self.args[idx].is_negative()
+                return self.args[idx].is_nonpos()
             else:
                 return False
         else:
@@ -224,6 +233,16 @@ class power(Elementwise):
         else:
             return self.args[0].is_constant()
 
+    def is_qpwa(self):
+        if self.p == 0:
+            return True
+        elif self.p == 1:
+            return self.args[0].is_qpwa()
+        elif self.p == 2:
+            return self.args[0].is_pwl()
+        else:
+            return self.args[0].is_constant()
+
     def _grad(self, values):
         """Gives the (sub/super)gradient of the atom w.r.t. each argument.
 
@@ -235,8 +254,8 @@ class power(Elementwise):
         Returns:
             A list of SciPy CSC sparse matrices or None.
         """
-        rows = self.args[0].size[0]*self.args[0].size[1]
-        cols = self.size[0]*self.size[1]
+        rows = self.args[0].size
+        cols = self.size
         if self.p == 0:
             # All zeros.
             return [sp.csc_matrix((rows, cols), dtype='float64')]
@@ -261,13 +280,10 @@ class power(Elementwise):
         else:
             return []
 
-    def validate_arguments(self):
-        pass
-
     def get_data(self):
         return [self.p, self.w]
 
-    def copy(self, args=None):
+    def copy(self, args=None, id_objects={}):
         """Returns a shallow copy of the power atom.
 
         Parameters
@@ -289,45 +305,6 @@ class power(Elementwise):
         copy.approx_error = self.approx_error
         super(type(self), copy).__init__(*args)
         return copy
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        x = arg_objs[0]
-        p, w = data
-
-        if p == 1:
-            return x, []
-        else:
-            one = lu.create_const(np.mat(np.ones(size)), size)
-            if p == 0:
-                return one, []
-            else:
-                t = lu.create_var(size)
-
-                if 0 < p < 1:
-                    return t, gm_constrs(t, [x, one], w)
-                elif p > 1:
-                    return t, gm_constrs(x, [t, one], w)
-                elif p < 0:
-                    return t, gm_constrs(one, [x, t], w)
-                else:
-                    raise NotImplementedError('this power is not yet supported.')
 
     def name(self):
         return "%s(%s, %s)" % (self.__class__.__name__,

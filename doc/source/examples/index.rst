@@ -3,62 +3,113 @@
 Examples
 ========
 
-These examples show many different ways to use CVXPY. The :ref:`basic` section shows how to solve some common optimization problems in CVXPY. The :ref:`advanced-python` and :ref:`applications` sections contains more complex examples aimed at experts in convex optimization.
+These examples show many different ways to use CVXPY.
+
+* The :ref:`basic` section shows how to solve some common optimization problems
+  in CVXPY.
+* The :ref:`machine-learning` section is a tutorial covering convex methods in
+  machine learning.
+* The :ref:`advanced-python` and :ref:`applications` sections contains
+  more complex examples aimed at experts in convex optimization.
+* The :ref:`dgp-examples` section contains an interactive tutorial on :ref:`disciplined
+  geometric programming <dgp>` and various examples of DGP problems.
 
 .. _basic:
 
 Basic Examples
 --------------
 
-- `Total variation in-painting <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/tv_inpainting.ipynb>`_
+- :doc:`Least squares <basic/least_squares>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/least_squares.ipynb>`_
 
-- `Control <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/intro/control.ipynb>`_
+- :doc:`Linear program <basic/linear_program>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/linear_program.ipynb>`_
 
-- `SVM classifier with regularization <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/intro/SVM.ipynb>`_
+- :doc:`Quadratic program <basic/quadratic_program>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/quadratic_program.ipynb>`_
 
-- `Portfolio optimization <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/applications/portfolio_optimization.ipynb>`_
+- :doc:`Second-order cone program <basic/socp>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/socp.ipynb>`_
 
-- `Worst-case risk analysis <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/applications/worst_case_analysis.ipynb>`_
+- :doc:`Semidefinite program <basic/sdp>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/sdp.ipynb>`_
 
-- `Optimal advertising <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/applications/optimal_advertising.ipynb>`_
+- :doc:`Mixed-integer quadratic program <basic/mixed_integer_quadratic_program>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/mixed_integer_quadratic_program.ipynb>`_
 
-- `Huber regression <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/applications/huber_regression.ipynb>`_
+- `Control <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/intro/control.ipynb>`_
 
-- `Quantile regression <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/applications/quantile_regression.ipynb>`_
+- `Portfolio optimization <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/applications/portfolio_optimization.ipynb>`_
 
-- `Model fitting <http://nbviewer.ipython.org/github/cvxgrp/cvx_short_course/blob/master/applications/model_fitting.ipynb>`_
+- `Worst-case risk analysis <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/applications/worst_case_analysis.ipynb>`_
+
+- `Model fitting <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/applications/model_fitting.ipynb>`_
+
+- `Optimal advertising <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/applications/optimal_ad.ipynb>`_
+
+- :doc:`Total variation in-painting <applications/tv_inpainting>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/tv_inpainting.ipynb>`_
+
+
+.. _machine-learning:
+
+Machine Learning
+----------------
+
+- :doc:`Ridge regression <machine_learning/ridge_regression>` `\[.ipynb\] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/machine_learning/ridge_regression.ipynb>`_
+
+- :doc:`Lasso regression <machine_learning/lasso_regression>` `\[.ipynb\] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/machine_learning/lasso_regression.ipynb>`_
+
+- :doc:`Logistic regression <machine_learning/logistic_regression>` `\[.ipynb\] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/machine_learning/logistic_regression.ipynb>`_
+
+- :doc:`SVM classifier <machine_learning/svm>` `\[.ipynb\] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/machine_learning/svm.ipynb>`_
+
+- `Huber regression <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/applications/huber_regression.ipynb>`_
+
+- `Quantile regression <https://colab.research.google.com/github/cvxgrp/cvx_short_course/blob/master/applications/quantile_regression.ipynb>`_
 
 .. _advanced-python:
 
-Advanced Examples
------------------
+Advanced
+--------
 
-- `Object-oriented convex optimization <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/OOCO.ipynb>`_
+- :doc:`Object-oriented convex optimization <applications/OOCO>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/OOCO.ipynb>`_
 
-- `Consensus optimization <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/consensus_opt.ipynb>`_
+- :doc:`Consensus optimization <applications/consensus_opt>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/consensus_opt.ipynb>`_
 
-- `Method of multipliers <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/MM.ipynb>`_
+- :doc:`Method of multipliers <applications/MM>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/MM.ipynb>`_
 
 .. _applications:
 
 Advanced Applications
 ---------------------
 
-- `Allocating interdiction effort to catch a smuggler <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/interdiction.ipynb>`_
-- `Antenna array design <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/ant_array_min_beamwidth.ipynb>`_
-- `Channel capacity <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/Channel_capacity_BV4.57.ipynb>`_
-- `Computing a sparse solution of a set of linear inequalities <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/sparse_solution.ipynb>`_
-- `Entropy maximization <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/max_entropy.ipynb>`_
-- `Fault detection <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/fault_detection.ipynb>`_
-- `Filter design <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/fir_chebychev_design.ipynb>`_
-- `Fitting censored data <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/censored_data.ipynb>`_
-- `L1 trend filtering <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/l1_trend_filter.ipynb>`_
-- `Nonnegative matrix factorization <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/nonneg_matrix_fact.ipynb>`_
-- `Optimal parade route <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/parade_route.ipynb>`_
-- `Optimal power and bandwidth allocation in a Gaussian broadcast channel <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/optimal_power_gaussian_channel_BV4.62.ipynb>`_
-- `Power assignment in a wireless communication system <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/maximise_minimum_SINR_BV4.20.ipynb>`_
-- `Predicting NBA game wins <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/nba_ranking.ipynb>`_
-- `Robust Kalman filtering for vehicle tracking <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/robust_kalman.ipynb>`_
-- `Sizing of clock meshes <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/clock_mesh.ipynb>`_
-- `Sparse covariance estimation for Gaussian variables <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/sparse_covariance_est.ipynb>`_
-- `Water filling <http://nbviewer.ipython.org/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/water_filling_BVex5.2.ipynb>`_
+- :doc:`Allocating interdiction effort to catch a smuggler <applications/interdiction>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/interdiction.ipynb>`_
+- :doc:`Antenna array design <applications/ant_array_min_beamwidth>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/ant_array_min_beamwidth.ipynb>`_
+- :doc:`Channel capacity <applications/Channel_capacity_BV4.57>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/Channel_capacity_BV4.57.ipynb>`_
+- :doc:`Computing a sparse solution of a set of linear inequalities <applications/sparse_solution>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/sparse_solution.ipynb>`_
+- :doc:`Entropy maximization <applications/max_entropy>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/max_entropy.ipynb>`_
+- :doc:`Fault detection <applications/fault_detection>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/fault_detection.ipynb>`_
+- :doc:`Filter design <applications/fir_chebychev_design>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/fir_chebychev_design.ipynb>`_
+- :doc:`Fitting censored data <applications/censored_data>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/censored_data.ipynb>`_
+- :doc:`L1 trend filtering <applications/l1_trend_filter>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/l1_trend_filter.ipynb>`_
+- :doc:`Nonnegative matrix factorization <applications/nonneg_matrix_fact>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/nonneg_matrix_fact.ipynb>`_
+- :doc:`Optimal parade route <applications/parade_route>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/parade_route.ipynb>`_
+- :doc:`Optimal power and bandwidth allocation in a Gaussian broadcast channel <applications/optimal_power_gaussian_channel_BV4.62>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/optimal_power_gaussian_channel_BV4.62.ipynb>`_
+- :doc:`Power assignment in a wireless communication system <applications/maximise_minimum_SINR_BV4.20>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/maximise_minimum_SINR_BV4.20.ipynb>`_
+- :doc:`Predicting NBA game wins <applications/nba_ranking>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/nba_ranking.ipynb>`_
+- :doc:`Robust Kalman filtering for vehicle tracking <applications/robust_kalman>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/robust_kalman.ipynb>`_
+- :doc:`Sizing of clock meshes <applications/clock_mesh>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/clock_mesh.ipynb>`_
+- :doc:`Sparse covariance estimation for Gaussian variables <applications/sparse_covariance_est>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/sparse_covariance_est.ipynb>`_
+- :doc:`Water filling <applications/water_filling_BVex5.2>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/WWW/water_filling_BVex5.2.ipynb>`_
+
+.. _dgp-examples:
+
+Disciplined Geometric Programming
+---------------------------------------
+- :doc:`DGP fundamentals <dgp/dgp_fundamentals>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dgp/dgp_fundamentals.ipynb>`_
+- :doc:`Maximizing the volume of a box <dgp/max_volume_box>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dgp/max_volume_box.ipynb>`_
+- :doc:`Power control <dgp/power_control>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dgp/power_control.ipynb>`_
+- :doc:`Perron-Frobenius matrix completion <dgp/pf_matrix_completion>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dgp/pf_matrix_completion.ipynb>`_
+- :doc:`Rank-one nonnegative matrix factorization <dgp/rank_one_nmf>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dgp/rank_one_nmf.ipynb>`_
+
+
+.. _dqcp-examples:
+
+Disciplined Quasiconvex Programming
+-----------------------------------
+- :doc:`Concave fractional function <dqcp/concave_fractional_function>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dqcp/concave_fractional_function.ipynb>`_
+- :doc:`Minimum-length least squares <dqcp/minimum_length_least_squares>` `[.ipynb] <https://colab.research.google.com/github/cvxgrp/cvxpy/blob/master/examples/notebooks/dqcp/minimum_length_least_squares.ipynb>`_

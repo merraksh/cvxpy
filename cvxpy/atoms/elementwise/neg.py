@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy.atoms.elementwise.min_elemwise import min_elemwise
+from cvxpy.atoms.elementwise.minimum import minimum
 
 
 def neg(x):
-    """ Alias for -min_elemwise{x, 0}.
+    """ Alias for -minimum{x, 0}.
 
     """
-    return -min_elemwise(x, 0)
+    return -minimum(x, 0)

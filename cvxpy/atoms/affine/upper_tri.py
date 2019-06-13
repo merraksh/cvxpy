@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ class upper_tri(AffAtom):
     def numeric(self, values):
         """Vectorize the upper triagonal entries.
         """
-        value = np.zeros(self.size[0])
+        value = np.zeros(self.shape[0])
         count = 0
         for i in range(values[0].shape[0]):
             for j in range(values[0].shape[1]):
@@ -42,27 +42,37 @@ class upper_tri(AffAtom):
     def validate_arguments(self):
         """Checks that the argument is a square matrix.
         """
-        if not self.args[0].size[0] == self.args[0].size[1]:
+        if not self.args[0].ndim == 2 or self.args[0].shape[0] != self.args[0].shape[1]:
             raise ValueError(
                 "Argument to upper_tri must be a square matrix."
             )
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """A vector.
         """
-        rows, cols = self.args[0].size
+        rows, cols = self.args[0].shape
         return (rows*(cols-1)//2, 1)
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
+
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Vectorized strictly upper triagonal entries.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 

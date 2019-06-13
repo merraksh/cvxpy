@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,5 +32,4 @@ def vec(X):
         An Expression representing the flattened matrix.
     """
     X = Expression.cast_to_const(X)
-
-    return reshape(X, X.size[0]*X.size[1], 1)
+    return reshape(X, (X.size,))

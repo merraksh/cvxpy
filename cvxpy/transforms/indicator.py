@@ -20,7 +20,15 @@ import numpy as np
 
 
 class indicator(Expression):
-    """The indicator I(constraints) = 0 if constraints hold, +\infty otherwise.
+    """An expression representing the convex function I(constraints) = 0
+       if constraints hold, +infty otherwise.
+
+    Parameters
+    ----------
+    constraints : list
+       A list of constraint objects.
+    err_tol:
+       A numeric tolerance for determining whether the constraints hold.
     """
 
     def __init__(self, constraints, err_tol=1e-3):
@@ -38,13 +46,29 @@ class indicator(Expression):
         """
         return False
 
-    def is_positive(self):
+    def is_log_log_convex(self):
+        return False
+
+    def is_log_log_concave(self):
+        return False
+
+    def is_nonneg(self):
         """Is the expression positive?
         """
         return True
 
-    def is_negative(self):
+    def is_nonpos(self):
         """Is the expression negative?
+        """
+        return False
+
+    def is_imag(self):
+        """Is the Leaf imaginary?
+        """
+        return False
+
+    def is_complex(self):
+        """Is the Leaf complex valued?
         """
         return False
 
@@ -54,10 +78,10 @@ class indicator(Expression):
         return [self.err_tol]
 
     @property
-    def size(self):
+    def shape(self):
         """Returns the (row, col) dimensions of the expression.
         """
-        return (1, 1)
+        return ()
 
     def name(self):
         """Returns the string representation of the expression.
@@ -77,7 +101,7 @@ class indicator(Expression):
         Returns:
             A numpy matrix or a scalar.
         """
-        if all([cons.value for cons in self.args]):
+        if all(cons.value() for cons in self.args):
             return 0
         else:
             return np.infty

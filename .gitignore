@@ -1,6 +1,8 @@
 .DS_Store
 *.py[cod]
 *#*
+*.swp
+*.ropeproject
 
 # C extensions
 *.so
@@ -22,6 +24,8 @@ lib64
 
 # Installer logs
 pip-log.txt
+Pipfile
+Pipfile.lock
 
 # Unit test / coverage reports
 .coverage
@@ -45,4 +49,6 @@ env_*
 
 # pycharm
 .idea
-*.pyproj
+
+# VS Code
+.vscode/

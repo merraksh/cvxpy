@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,10 +18,9 @@ import cvxpy.settings as s
 import cvxpy.utilities as u
 from cvxpy.problems.objective import Minimize, Maximize
 from cvxpy.problems.problem import Problem
-from cvxpy.expressions.variables import Variable
+from cvxpy.expressions.variable import Variable
 from cvxpy.expressions.expression import Expression
-from cvxpy.atoms import trace
-import copy
+from cvxpy.atoms import trace, sum
 
 
 def partial_optimize(prob, opt_vars=None, dont_opt_vars=None):
@@ -29,6 +28,18 @@ def partial_optimize(prob, opt_vars=None, dont_opt_vars=None):
 
     Either opt_vars or dont_opt_vars must be given.
     If both are given, they must contain all the variables in the problem.
+
+    Partial optimize is useful for two-stage optimization and graph implementations.
+    For example, we can write
+
+    .. code :: python
+
+        x = Variable(n)
+        t = Variable(n)
+        abs_x = partial_optimize(Problem(Minimize(sum(t)),
+                  [-t <= x, x <= t]), opt_vars=[t])
+
+    to define the entrywise absolute value of x.
 
     Parameters
     ----------
@@ -43,6 +54,7 @@ def partial_optimize(prob, opt_vars=None, dont_opt_vars=None):
     -------
     Expression
         An expression representing the partial optimization.
+        Convex for minimization objectives and concave for maximization objectives.
     """
     # One of the two arguments must be specified.
     if opt_vars is None and dont_opt_vars is None:
@@ -66,7 +78,14 @@ def partial_optimize(prob, opt_vars=None, dont_opt_vars=None):
                      "they must contain all variables in the problem.")
                 )
 
-    return PartialProblem(prob, opt_vars, dont_opt_vars)
+    # Replace the opt_vars in prob with new variables.
+    id_to_new_var = {id(var): Variable(var.shape,
+                                       **var.attributes) for var in opt_vars}
+    new_obj = prob.objective.tree_copy(id_to_new_var)
+    new_constrs = [con.tree_copy(id_to_new_var)
+                   for con in prob.constraints]
+    new_var_prob = Problem(new_obj, new_constrs)
+    return PartialProblem(new_var_prob, opt_vars, dont_opt_vars)
 
 
 class PartialProblem(Expression):
@@ -84,18 +103,15 @@ class PartialProblem(Expression):
         self.opt_vars = opt_vars
         self.dont_opt_vars = dont_opt_vars
         self.args = [prob]
-        # Replace the opt_vars in prob with new variables.
-        id_to_new_var = {var.id: var.copy() for var in self.opt_vars}
-        new_obj = self._replace_new_vars(prob.objective, id_to_new_var)
-        new_constrs = [self._replace_new_vars(con, id_to_new_var)
-                       for con in prob.constraints]
-        self._prob = Problem(new_obj, new_constrs)
         super(PartialProblem, self).__init__()
 
     def get_data(self):
         """Returns info needed to reconstruct the expression besides the args.
         """
         return [self.opt_vars, self.dont_opt_vars]
+
+    def is_constant(self):
+        return len(self.args[0].variables()) == 0
 
     def is_convex(self):
         """Is the expression convex?
@@ -109,21 +125,43 @@ class PartialProblem(Expression):
         return self.args[0].is_dcp() and \
             type(self.args[0].objective) == Maximize
 
-    def is_positive(self):
-        """Is the expression positive?
+    def is_log_log_convex(self):
+        """Is the expression convex?
         """
-        return self.args[0].objective.args[0].is_positive()
+        return self.args[0].is_dgp() and \
+            type(self.args[0].objective) == Minimize
 
-    def is_negative(self):
-        """Is the expression negative?
+    def is_log_log_concave(self):
+        """Is the expression convex?
         """
-        return self.args[0].objective.args[0].is_negative()
+        return self.args[0].is_dgp() and \
+            type(self.args[0].objective) == Maximize
+
+    def is_nonneg(self):
+        """Is the expression nonnegative?
+        """
+        return self.args[0].objective.args[0].is_nonneg()
+
+    def is_nonpos(self):
+        """Is the expression nonpositive?
+        """
+        return self.args[0].objective.args[0].is_nonpos()
+
+    def is_imag(self):
+        """Is the Leaf imaginary?
+        """
+        return False
+
+    def is_complex(self):
+        """Is the Leaf complex valued?
+        """
+        return False
 
     @property
-    def size(self):
+    def shape(self):
         """Returns the (row, col) dimensions of the expression.
         """
-        return (1, 1)
+        return tuple()
 
     def name(self):
         """Returns the string representation of the expression.
@@ -133,7 +171,17 @@ class PartialProblem(Expression):
     def variables(self):
         """Returns the variables in the problem.
         """
-        return copy.copy(self.dont_opt_vars)
+        return self.args[0].variables()
+
+    def parameters(self):
+        """Returns the parameters in the problem.
+        """
+        return self.args[0].parameters()
+
+    def constants(self):
+        """Returns the constants in the problem.
+        """
+        return self.args[0].constants()
 
     @property
     def grad(self):
@@ -159,25 +207,29 @@ class PartialProblem(Expression):
 
         old_vals = {var.id: var.value for var in self.variables()}
         fix_vars = []
-        for var in self.variables():
+        for var in self.dont_opt_vars:
             if var.value is None:
                 return u.grad.error_grad(self)
             else:
                 fix_vars += [var == var.value]
-        prob = Problem(self._prob.objective,
-                       fix_vars + self._prob.constraints)
-        prob.solve()
+        prob = Problem(self.args[0].objective,
+                       fix_vars + self.args[0].constraints)
+        prob.solve(verbose=True)
         # Compute gradient.
         if prob.status in s.SOLUTION_PRESENT:
             sign = self.is_convex() - self.is_concave()
             # Form Lagrangian.
-            lagr = self._prob.objective.args[0]
-            for constr in self._prob.constraints:
+            lagr = self.args[0].objective.args[0]
+            for constr in self.args[0].constraints:
                 # TODO: better way to get constraint expressions.
                 lagr_multiplier = self.cast_to_const(sign*constr.dual_value)
-                lagr += trace(lagr_multiplier.T*constr._expr)
+                prod = lagr_multiplier.T*constr.expr
+                if prod.is_scalar():
+                    lagr += sum(prod)
+                else:
+                    lagr += trace(prod)
             grad_map = lagr.grad
-            result = {var: grad_map[var] for var in self.variables()}
+            result = {var: grad_map[var] for var in self.dont_opt_vars}
         else:  # Unbounded, infeasible, or solver error.
             result = u.grad.error_grad(self)
         # Restore the original values to the variables.
@@ -190,9 +242,9 @@ class PartialProblem(Expression):
         """A list of constraints describing the closure of the region
            where the expression is finite.
         """
-        # Variables optimized over are replaced in self._prob.
-        obj_expr = self._prob.objective.args[0]
-        return self._prob.constraints + obj_expr.domain
+        # Variables optimized over are replaced in self.args[0].
+        obj_expr = self.args[0].objective.args[0]
+        return self.args[0].constraints + obj_expr.domain
 
     @property
     def value(self):
@@ -203,59 +255,17 @@ class PartialProblem(Expression):
         """
         old_vals = {var.id: var.value for var in self.variables()}
         fix_vars = []
-        for var in self.variables():
+        for var in self.dont_opt_vars:
             if var.value is None:
                 return None
             else:
                 fix_vars += [var == var.value]
-        prob = Problem(self.args[0].objective.copy(self), fix_vars)
+        prob = Problem(self.args[0].objective, fix_vars + self.args[0].constraints)
         result = prob.solve()
         # Restore the original values to the variables.
         for var in self.variables():
             var.value = old_vals[var.id]
         return result
-
-    @staticmethod
-    def _replace_new_vars(obj, id_to_new_var):
-        """Replaces the given variables in the object.
-
-        Parameters
-        ----------
-        obj : Object
-            The object to replace variables in.
-        id_to_new_var : dict
-            A map of id to new variable.
-
-        Returns
-        -------
-        Object
-            An object identical to obj, but with the given variables replaced.
-        """
-        if isinstance(obj, Variable) and obj.id in id_to_new_var:
-            return id_to_new_var[obj.id]
-        # Leaves outside of optimized variables are preserved.
-        elif len(obj.args) == 0:
-            return obj
-        elif isinstance(obj, PartialProblem):
-            prob = obj.args[0]
-            new_obj = PartialProblem._replace_new_vars(prob.objective,
-                                                       id_to_new_var)
-            new_constr = []
-            for constr in prob.constraints:
-                new_constr.append(
-                    PartialProblem._replace_new_vars(constr,
-                                                     id_to_new_var)
-                )
-            new_args = [Problem(new_obj, new_constr)]
-            return obj.copy(new_args)
-        # Parent nodes are copied.
-        else:
-            new_args = []
-            for arg in obj.args:
-                new_args.append(
-                    PartialProblem._replace_new_vars(arg, id_to_new_var)
-                )
-            return obj.copy(new_args)
 
     def canonicalize(self):
         """Returns the graph implementation of the object.
@@ -268,7 +278,7 @@ class PartialProblem(Expression):
         """
         # Canonical form for objective and problem switches from minimize
         # to maximize.
-        obj, constrs = self._prob.objective.args[0].canonical_form
-        for cons in self._prob.constraints:
+        obj, constrs = self.args[0].objective.args[0].canonical_form
+        for cons in self.args[0].constraints:
             constrs += cons.canonical_form[1]
         return (obj, constrs)

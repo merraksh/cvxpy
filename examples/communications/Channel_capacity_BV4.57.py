@@ -1,3 +1,19 @@
+"""
+Copyright 2013 Steven Diamond
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 #!/usr/bin/env python3
 # @author: R. Gowers, S. Al-Izzi, T. Pollington, R. Hill & K. Briggs
 # Boyd and Vandenberghe, Convex Optimization, exercise 4.57 page 207
@@ -46,10 +62,10 @@ where c_j = ∑(p_(i,j)log_2(p_(i,j)))
   y = P*x
   # I is the mutual information between x and y
   c = np.sum(P*np.log2(P),axis=0)
-  I = c*x + cvx.sum_entries(cvx.entr(y))
+  I = c*x + cvx.sum(cvx.entr(y))
   # Channel capacity maximised by maximising the mutual information
   obj = cvx.Minimize(-I)
-  constraints = [cvx.sum_entries(x) == sum_x,x >= 0]
+  constraints = [cvx.sum(x) == sum_x,x >= 0]
   # Form and solve problem
   prob = cvx.Problem(obj,constraints)
   prob.solve()

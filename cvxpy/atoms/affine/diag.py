@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,8 +15,7 @@ limitations under the License.
 """
 
 from cvxpy.atoms.affine.affine_atom import AffAtom
-from cvxpy.atoms.affine.reshape import reshape
-import cvxpy.interface as intf
+from cvxpy.atoms.affine.vec import vec
 import cvxpy.lin_ops.lin_utils as lu
 import numpy as np
 
@@ -36,13 +35,8 @@ def diag(expr):
     """
     expr = AffAtom.cast_to_const(expr)
     if expr.is_vector():
-        if expr.size[1] == 1:
-            return diag_vec(expr)
-        # Convert a row vector to a column vector.
-        else:
-            expr = reshape(expr, expr.size[1], 1)
-            return diag_vec(expr)
-    elif expr.size[0] == expr.size[1]:
+        return diag_vec(vec(expr))
+    elif expr.ndim == 2 and expr.shape[0] == expr.shape[1]:
         return diag_mat(expr)
     else:
         raise ValueError("Argument to diag must be a vector or square matrix.")
@@ -55,30 +49,47 @@ class diag_vec(AffAtom):
     def __init__(self, expr):
         super(diag_vec, self).__init__(expr)
 
-    @AffAtom.numpy_numeric
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
+
     def numeric(self, values):
         """Convert the vector constant into a diagonal matrix.
         """
-        # Convert values to 1D.
-        value = intf.from_2D_to_1D(values[0])
-        return np.diag(value)
+        return np.diag(values[0])
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """A square matrix.
         """
-        rows, _ = self.args[0].size
+        rows = self.args[0].shape[0]
         return (rows, rows)
 
+    def is_symmetric(self):
+        """Is the expression symmetric?
+        """
+        return True
+
+    def is_hermitian(self):
+        """Is the expression symmetric?
+        """
+        return True
+
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Convolve two vectors.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -97,32 +108,39 @@ class diag_mat(AffAtom):
     def __init__(self, expr):
         super(diag_mat, self).__init__(expr)
 
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
+
     @AffAtom.numpy_numeric
     def numeric(self, values):
         """Extract the diagonal from a square matrix constant.
         """
         # The return type in numpy versions < 1.10 was ndarray.
-        v = np.diag(values[0])
-        if isinstance(v, np.matrix):
-            v = v.A[0]
-        return v
+        return np.diag(values[0])
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """A column vector.
         """
-        rows, _ = self.args[0].size
-        return (rows, 1)
+        rows, _ = self.args[0].shape
+        return (rows,)
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Extracts the diagonal of a matrix.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 

@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,8 +51,8 @@ class MatrixInterface(NDArrayInterface):
         return np.asmatrix(np.eye(size))
 
     # A matrix with all entries equal to the given scalar value.
-    def scalar_matrix(self, value, rows, cols):
-        mat = np.zeros((rows, cols), dtype='float64') + value
+    def scalar_matrix(self, value, shape):
+        mat = np.zeros(shape, dtype='float64') + value
         return np.asmatrix(mat)
 
     def reshape(self, matrix, size):

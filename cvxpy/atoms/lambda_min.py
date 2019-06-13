@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +19,7 @@ from cvxpy.atoms.lambda_max import lambda_max
 
 
 def lambda_min(X):
-    """ Miximum eigenvalue; :math:`\lambda_{\min}(A)`.
-
+    """ Minimum eigenvalue; :math:`\\lambda_{\\min}(A)`.
     """
     X = Expression.cast_to_const(X)
     return -lambda_max(-X)

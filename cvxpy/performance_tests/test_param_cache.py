@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,6 +12,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+THIS FILE IS DEPRECATED AND MAY BE REMOVED WITHOUT WARNING!
+DO NOT CALL THESE FUNCTIONS IN YOUR CODE!
 """
 
 import unittest
@@ -43,4 +46,4 @@ class TestParamCache(unittest.TestCase):
         result = prob.solve()
         time2 = time.time() - time0
         self.assertAlmostEqual(result, N*(N-1)/2.0, places=4)
-        assert time2 < time1
+        print(time2 < time1)

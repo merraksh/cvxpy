@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,53 +20,70 @@ import numpy as np
 
 
 class reshape(AffAtom):
-    """ Reshapes the expression.
+    """Reshapes the expression.
 
     Vectorizes the expression then unvectorizes it into the new shape.
-    The entries are stored in column-major order.
+    The entries are reshaped and stored in column-major order, also known
+    as Fortran order.
+
+    Parameters
+    ----------
+    expr : Expression
+       The expression to promote.
+    shape : tuple
+        The shape to promote to.
     """
 
-    def __init__(self, expr, rows, cols):
-        self.rows = rows
-        self.cols = cols
+    def __init__(self, expr, shape):
+        self._shape = shape
         super(reshape, self).__init__(expr)
+
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
 
     @AffAtom.numpy_numeric
     def numeric(self, values):
         """Reshape the value.
         """
-        return np.reshape(values[0], (self.rows, self.cols), "F")
+        return np.reshape(values[0], self.shape, "F")
 
     def validate_arguments(self):
         """Checks that the new shape has the same number of entries as the old.
         """
-        old_len = self.args[0].size[0]*self.args[0].size[1]
-        new_len = self.rows*self.cols
+        old_len = self.args[0].size
+        new_len = np.prod(self._shape, dtype=int)
         if not old_len == new_len:
             raise ValueError(
-                "Invalid reshape dimensions (%i, %i)." % (self.rows, self.cols)
+                "Invalid reshape dimensions %s." % (self._shape,)
             )
 
-    def size_from_args(self):
+    def shape_from_args(self):
         """Returns the shape from the rows, cols arguments.
         """
-        return (self.rows, self.cols)
+        return self._shape
 
     def get_data(self):
         """Returns info needed to reconstruct the expression besides the args.
         """
-        return [self.rows, self.cols]
+        return [self._shape]
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Convolve two vectors.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -75,4 +92,4 @@ class reshape(AffAtom):
         tuple
             (LinOp for objective, list of constraints)
         """
-        return (lu.reshape(arg_objs[0], size), [])
+        return (lu.reshape(arg_objs[0], shape), [])

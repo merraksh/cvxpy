@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,28 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import cvxpy.lin_ops.lin_utils as lu
-from cvxpy.expressions.constants.parameter import Parameter
 from cvxpy.atoms.elementwise.elementwise import Elementwise
-from cvxpy.atoms.elementwise.abs import abs
 import scipy.special
 import numpy as np
-from .power import power
-from fractions import Fraction
+
+# TODO(akshayka): DGP support.
 
 
 class huber(Elementwise):
     """The Huber function
 
-    Huber(x, M) = 2M|x|-M^2 for |x| >= |M|
-                  |x|^2 for |x| <= |M|
-    M defaults to 1.
+    .. math::
+
+        \\operatorname{Huber}(x, M) =
+            \\begin{cases}
+                2M|x|-M^2 & \\text{for } |x| \\geq |M| \\\\
+                      |x|^2 & \\text{for } |x| \\leq |M|.
+            \\end{cases}
+
+    :math:`M` defaults to 1.
 
     Parameters
     ----------
     x : Expression
-        A CVXPY expression.
-    M : int/float or Parameter
+        The expression to which the huber function will be applied.
+    M : Constant
+        A scalar constant.
     """
 
     def __init__(self, x, M=1):
@@ -67,12 +71,17 @@ class huber(Elementwise):
     def is_incr(self, idx):
         """Is the composition non-decreasing in argument idx?
         """
-        return self.args[idx].is_positive()
+        return self.args[idx].is_nonneg()
 
     def is_decr(self, idx):
         """Is the composition non-increasing in argument idx?
         """
-        return self.args[idx].is_negative()
+        return self.args[idx].is_nonpos()
+
+    def is_quadratic(self):
+        """Quadratic if x is affine.
+        """
+        return self.args[0].is_affine()
 
     def get_data(self):
         """Returns the parameter M.
@@ -82,8 +91,9 @@ class huber(Elementwise):
     def validate_arguments(self):
         """Checks that M >= 0 and is constant.
         """
-        if not (self.M.is_positive() and self.M.is_constant() and self.M.is_scalar()):
+        if not (self.M.is_nonneg() and self.M.is_constant() and self.M.is_scalar()):
             raise ValueError("M must be a non-negative scalar constant.")
+        super(huber, self).validate_arguments()
 
     def _grad(self, values):
         """Gives the (sub/super)gradient of the atom w.r.t. each argument.
@@ -96,49 +106,8 @@ class huber(Elementwise):
         Returns:
             A list of SciPy CSC sparse matrices or None.
         """
-        rows = self.args[0].size[0]*self.args[0].size[1]
-        cols = self.size[0]*self.size[1]
+        rows = self.args[0].size
+        cols = self.size
         min_val = np.minimum(np.abs(values[0]), self.M.value)
         grad_vals = 2*np.multiply(np.sign(values[0]), min_val)
         return [huber.elemwise_grad_to_diag(grad_vals, rows, cols)]
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        minimize n^2 + 2M|s|
-        subject to s + n = x
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        M = data[0]
-        x = arg_objs[0]
-        n = lu.create_var(size)
-        s = lu.create_var(size)
-        two = lu.create_const(2, (1, 1))
-        if isinstance(M, Parameter):
-            M = lu.create_param(M, (1, 1))
-        else:  # M is constant.
-            M = lu.create_const(M.value, (1, 1))
-
-        # n**2 + 2*M*|s|
-        n2, constr_sq = power.graph_implementation([n], size, (2, (Fraction(1, 2), Fraction(1, 2))))
-        abs_s, constr_abs = abs.graph_implementation([s], size)
-        M_abs_s = lu.mul_expr(M, abs_s, size)
-        obj = lu.sum_expr([n2, lu.mul_expr(two, M_abs_s, size)])
-        # x == s + n
-        constraints = constr_sq + constr_abs
-        constraints.append(lu.create_eq(x, lu.sum_expr([n, s])))
-        return (obj, constraints)

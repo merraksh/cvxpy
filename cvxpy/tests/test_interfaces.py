@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,19 +41,19 @@ class TestInterfaces(BaseTest):
     #     interface = intf.get_matrix_interface(cvxopt.matrix)
     #     # const_to_matrix
     #     mat = interface.const_to_matrix([1, 2, 3])
-    #     self.assertEqual(interface.size(mat), (3, 1))
+    #     self.assertEqual(interface.shape(mat), (3, 1))
     #     sp_mat = sp.coo_matrix(([1, 2], ([3, 4], [2, 1])), (5, 5))
     #     mat = interface.const_to_matrix(sp_mat)
-    #     self.assertEqual(interface.size(mat), (5, 5))
+    #     self.assertEqual(interface.shape(mat), (5, 5))
     #     # identity
     #     mat = interface.identity(4)
     #     cmp_mat = interface.const_to_matrix(np.eye(4))
     #     self.assertEqual(type(mat), type(cmp_mat))
-    #     self.assertEqual(interface.size(mat), interface.size(cmp_mat))
+    #     self.assertEqual(interface.shape(mat), interface.shape(cmp_mat))
     #     assert not mat - cmp_mat
     #     # scalar_matrix
     #     mat = interface.scalar_matrix(2, 4, 3)
-    #     self.assertEqual(interface.size(mat), (4, 3))
+    #     self.assertEqual(interface.shape(mat), (4, 3))
     #     self.assertEqual(interface.index(mat, (1, 2)), 2)
     #     # reshape
     #     mat = interface.const_to_matrix([[1, 2, 3], [3, 4, 5]])
@@ -74,16 +74,16 @@ class TestInterfaces(BaseTest):
     #     interface = intf.get_matrix_interface(cvxopt.spmatrix)
     #     # const_to_matrix
     #     mat = interface.const_to_matrix([1, 2, 3])
-    #     self.assertEqual(interface.size(mat), (3, 1))
+    #     self.assertEqual(interface.shape(mat), (3, 1))
     #     # identity
     #     mat = interface.identity(4)
     #     cmp_mat = interface.const_to_matrix(np.eye(4))
-    #     self.assertEqual(interface.size(mat), interface.size(cmp_mat))
+    #     self.assertEqual(interface.shape(mat), interface.shape(cmp_mat))
     #     assert not mat - cmp_mat
     #     assert intf.is_sparse(mat)
     #     # scalar_matrix
     #     mat = interface.scalar_matrix(2, 4, 3)
-    #     self.assertEqual(interface.size(mat), (4, 3))
+    #     self.assertEqual(interface.shape(mat), (4, 3))
     #     self.assertEqual(interface.index(mat, (1, 2)), 2)
     #     # reshape
     #     mat = interface.const_to_matrix([[1, 2, 3], [3, 4, 5]])
@@ -95,7 +95,7 @@ class TestInterfaces(BaseTest):
     #     scalar = interface.scalar_matrix(1, 1, 1)
     #     self.assertEqual(type(scalar), cvxopt.spmatrix)
     #     scalar = interface.scalar_matrix(1, 1, 3)
-    #     self.assertEqual(scalar.size, (1, 3))
+    #     self.assertEqual(scalar.shape, (1, 3))
     #     # index
     #     mat = interface.const_to_matrix([[1, 2, 3, 4], [3, 4, 5, 6]])
     #     self.assertEqual(interface.index(mat, (0, 1)), 3)
@@ -109,9 +109,9 @@ class TestInterfaces(BaseTest):
         interface = intf.get_matrix_interface(np.ndarray)
         # const_to_matrix
         mat = interface.const_to_matrix([1, 2, 3])
-        self.assertEqual(interface.size(mat), (3, 1))
+        self.assertEqual(interface.shape(mat), (3,))
         mat = interface.const_to_matrix([1, 2])
-        self.assertEqual(interface.size(mat), (2, 1))
+        self.assertEqual(interface.shape(mat), (2,))
         # # CVXOPT sparse conversion
         # tmp = intf.get_matrix_interface(cvxopt.spmatrix).const_to_matrix([1, 2, 3])
         # mat = interface.const_to_matrix(tmp)
@@ -120,11 +120,11 @@ class TestInterfaces(BaseTest):
         # mat = interface.identity(4)
         # cvxopt_dense = intf.get_matrix_interface(cvxopt.matrix)
         # cmp_mat = interface.const_to_matrix(cvxopt_dense.identity(4))
-        # self.assertEqual(interface.size(mat), interface.size(cmp_mat))
+        # self.assertEqual(interface.shape(mat), interface.shape(cmp_mat))
         # assert (mat == cmp_mat).all()
         # scalar_matrix
-        mat = interface.scalar_matrix(2, 4, 3)
-        self.assertEqual(interface.size(mat), (4, 3))
+        mat = interface.scalar_matrix(2, (4, 3))
+        self.assertEqual(interface.shape(mat), (4, 3))
         self.assertEqual(interface.index(mat, (1, 2)), 2)
         # reshape
         mat = interface.const_to_matrix([[1, 2, 3], [3, 4, 5]])
@@ -144,26 +144,26 @@ class TestInterfaces(BaseTest):
         assert (scalar - mat == interface.const_to_matrix([1, 0, -1])).all()
         # Sign
         self.sign_for_intf(interface)
-        # Size.
-        assert interface.size(np.array([1, 2, 3])) == (3, 1)
+        # shape.
+        assert interface.shape(np.array([1, 2, 3])) == (3,)
 
     # Test numpy matrix interface.
     def test_numpy_matrix(self):
         interface = intf.get_matrix_interface(np.matrix)
         # const_to_matrix
         mat = interface.const_to_matrix([1, 2, 3])
-        self.assertEqual(interface.size(mat), (3, 1))
+        self.assertEqual(interface.shape(mat), (3, 1))
         mat = interface.const_to_matrix([[1], [2], [3]])
         self.assertEqual(mat[0, 0], 1)
         # identity
         # mat = interface.identity(4)
         # cvxopt_dense = intf.get_matrix_interface(cvxopt.matrix)
         # cmp_mat = interface.const_to_matrix(cvxopt_dense.identity(4))
-        # self.assertEqual(interface.size(mat), interface.size(cmp_mat))
+        # self.assertEqual(interface.shape(mat), interface.shape(cmp_mat))
         # assert not (mat - cmp_mat).any()
         # scalar_matrix
-        mat = interface.scalar_matrix(2, 4, 3)
-        self.assertEqual(interface.size(mat), (4, 3))
+        mat = interface.scalar_matrix(2, (4, 3))
+        self.assertEqual(interface.shape(mat), (4, 3))
         self.assertEqual(interface.index(mat, (1, 2)), 2)
         # reshape
         mat = interface.const_to_matrix([[1, 2, 3], [3, 4, 5]])
@@ -175,49 +175,57 @@ class TestInterfaces(BaseTest):
         mat = interface.const_to_matrix([[1, 2, 3, 4], [3, 4, 5, 6]])
         self.assertEqual(interface.index(mat, (0, 1)), 3)
         mat = interface.index(mat, (slice(1, 4, 2), slice(0, 2, None)))
-        assert not (mat - np.matrix("2 4; 4 6")).any()
+        assert not (mat - np.array([[2, 4], [4, 6]])).any()
         # Sign
         self.sign_for_intf(interface)
 
-    # Test cvxopt sparse interface.
     def test_scipy_sparse(self):
+        """Test cvxopt sparse interface.
+        """
         interface = intf.get_matrix_interface(sp.csc_matrix)
         # const_to_matrix
         mat = interface.const_to_matrix([1, 2, 3])
-        self.assertEqual(interface.size(mat), (3, 1))
+        self.assertEqual(interface.shape(mat), (3, 1))
         # C = cvxopt.spmatrix([1, 1, 1, 1, 1], [0, 1, 2, 0, 0, ], [0, 0, 0, 1, 2])
         # mat = interface.const_to_matrix(C)
-        # self.assertEqual(interface.size(mat), (3, 3))
+        # self.assertEqual(interface.shape(mat), (3, 3))
         # identity
         mat = interface.identity(4)
         cmp_mat = interface.const_to_matrix(np.eye(4))
-        self.assertEqual(interface.size(mat), interface.size(cmp_mat))
+        self.assertEqual(interface.shape(mat), interface.shape(cmp_mat))
         assert (mat - cmp_mat).nnz == 0
         # scalar_matrix
-        mat = interface.scalar_matrix(2, 4, 3)
-        self.assertEqual(interface.size(mat), (4, 3))
+        mat = interface.scalar_matrix(2, (4, 3))
+        self.assertEqual(interface.shape(mat), (4, 3))
         self.assertEqual(interface.index(mat, (1, 2)), 2)
         # reshape
         mat = interface.const_to_matrix([[1, 2, 3], [3, 4, 5]])
         mat = interface.reshape(mat, (6, 1))
         self.assertEqual(interface.index(mat, (4, 0)), 4)
-        mat = interface.const_to_matrix(1, convert_scalars=True)
-        self.assertEqual(type(interface.reshape(mat, (1, 1))), type(mat))
         # Test scalars.
-        scalar = interface.scalar_matrix(1, 1, 1)
+        scalar = interface.scalar_matrix(1, (1, 1))
         self.assertEqual(type(scalar), np.ndarray)
-        scalar = interface.scalar_matrix(1, 1, 3)
+        scalar = interface.scalar_matrix(1, (1, 3))
         self.assertEqual(scalar.shape, (1, 3))
         # index
         mat = interface.const_to_matrix([[1, 2, 3, 4], [3, 4, 5, 6]])
         self.assertEqual(interface.index(mat, (0, 1)), 3)
         mat = interface.index(mat, (slice(1, 4, 2), slice(0, 2, None)))
-        assert not (mat - np.matrix("2 4; 4 6")).any()
+        assert not (mat - np.array([[2, 4], [4, 6]])).any()
         # scalar value
         mat = sp.eye(1)
         self.assertEqual(intf.scalar_value(mat), 1.0)
         # Sign
         self.sign_for_intf(interface)
+        # Complex
+        # define sparse matrix [[0, 1j],[-1j,0]]
+        row = np.array([0, 1])
+        col = np.array([1, 0])
+        data = np.array([1j, -1j])
+        A = sp.csr_matrix((data, (row, col)), shape=(2, 2))
+        mat = interface.const_to_matrix(A)
+        self.assertEquals(mat[0, 1], 1j)
+        self.assertEquals(mat[1, 0], -1j)
 
     def test_conversion_between_intf(self):
         """Test conversion between every pair of interfaces.

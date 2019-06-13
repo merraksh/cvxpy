@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,23 +15,20 @@ limitations under the License.
 """
 
 from fractions import Fraction
-from cvxpy.constraints import SOC_Axis
-import cvxpy.lin_ops.lin_utils as lu
+from cvxpy.atoms.affine.reshape import reshape
+from cvxpy.atoms.affine.vstack import vstack
+from cvxpy.constraints.second_order import SOC
+from cvxpy.expressions.variable import Variable
 import numpy as np
 from collections import defaultdict
 import numbers
 
-two = lu.create_const(2, (1, 1))
-
 
 def gm(t, x, y):
-    length = t.size[0]*t.size[1]
-    return SOC_Axis(lu.reshape(lu.sum_expr([x, y]), (length, 1)),
-                    lu.vstack([
-                        lu.reshape(lu.sub_expr(x, y), (1, length)),
-                        lu.reshape(lu.mul_expr(two, t, t.size), (1, length))
-                        ], (2, length)),
-                    0)
+    length = t.size
+    return SOC(t=reshape(x+y, (length,)),
+               X=vstack([reshape(x-y, (1, length)), reshape(2*t, (1, length))]),
+               axis=0)
 
 
 def gm_constrs(t, x_list, p):
@@ -64,7 +61,7 @@ def gm_constrs(t, x_list, p):
     w = dyad_completion(p)
 
     tree = decompose(w)
-    d = defaultdict(lambda: lu.create_var(t.size))
+    d = defaultdict(lambda: Variable(t.shape))
     d[w] = t
 
     if len(x_list) < len(w):
@@ -396,7 +393,7 @@ def make_frac(a, denom):
     inds = np.argsort(err)[:(denom - sum(b))]
     b[inds] += 1
 
-    denom = int(denom)
+    denom = np.int32(denom)
     b = b.tolist()
 
     return tuple(Fraction(v, denom) for v in b)
@@ -437,12 +434,12 @@ def dyad_completion(w):
 
 
 def approx_error(a_orig, w_approx):
-    """ Return the :math:`\ell_\infty` norm error from approximating the vector a_orig/sum(a_orig)
+    """ Return the :math:`\\ell_\\infty` norm error from approximating the vector a_orig/sum(a_orig)
         with the weight vector w_approx.
 
         That is, return
 
-        .. math:: \|a/\mathbf{1}^T a - w_{\mbox{approx}} \|_\infty
+        .. math:: \\|a/\\mathbf{1}^T a - w_{\\mbox{approx}} \\|_\\infty
 
 
         >>> e = approx_error([1, 1, 1], [Fraction(1,3), Fraction(1,3), Fraction(1,3)])
@@ -472,7 +469,7 @@ def next_pow2(n):
     if n <= 0:
         return 1
 
-    n2 = 1 << (n).bit_length()
+    n2 = 1 << int(n).bit_length()
     if n2 >> 1 == n:
         return n
     else:

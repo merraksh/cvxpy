@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,13 +19,23 @@ from cvxpy.atoms.affine.affine_atom import AffAtom
 import numpy as np
 
 
-class vstack(AffAtom):
+def vstack(arg_list):
+    """Wrapper on vstack to ensure list argument.
+    """
+    return Vstack(*arg_list)
+
+
+class Vstack(AffAtom):
     """ Vertical concatenation """
-    # Can take a single list as input.
-    def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], list):
-            args = args[0]
-        super(vstack, self).__init__(*args)
+    def is_atom_log_log_convex(self):
+        """Is the atom log-log convex?
+        """
+        return True
+
+    def is_atom_log_log_concave(self):
+        """Is the atom log-log concave?
+        """
+        return True
 
     # Returns the vstack of the values.
     @AffAtom.numpy_numeric
@@ -33,28 +43,36 @@ class vstack(AffAtom):
         return np.vstack(values)
 
     # The shape is the common width and the sum of the heights.
-    def size_from_args(self):
-        cols = self.args[0].size[1]
-        rows = sum(arg.size[0] for arg in self.args)
-        return (rows, cols)
+    def shape_from_args(self):
+        self.args[0].shape
+        if self.args[0].ndim == 0:
+            return (len(self.args), 1)
+        elif self.args[0].ndim == 1:
+            return (len(self.args), self.args[0].shape[0])
+        else:
+            rows = sum(arg.shape[0] for arg in self.args)
+            return (rows,) + self.args[0].shape[1:]
 
     # All arguments must have the same width.
     def validate_arguments(self):
-        arg_cols = [arg.size[1] for arg in self.args]
-        if max(arg_cols) != min(arg_cols):
-            raise TypeError(("All arguments to vstack must have "
-                             "the same number of columns."))
+        model = self.args[0].shape
+        for arg in self.args[1:]:
+            if len(arg.shape) != len(model) or \
+               (len(model) > 1 and model[1:] != arg.shape[1:]) or \
+               (len(model) <= 1 and model != arg.shape):
+                raise ValueError(("All the input dimensions except"
+                                  " for axis 0 must match exactly."))
 
     @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
+    def graph_implementation(arg_objs, shape, data=None):
         """Stack the expressions vertically.
 
         Parameters
         ----------
         arg_objs : list
             LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
+        shape : tuple
+            The shape of the resulting expression.
         data :
             Additional data required by the atom.
 
@@ -63,4 +81,4 @@ class vstack(AffAtom):
         tuple
             (LinOp for objective, list of constraints)
         """
-        return (lu.vstack(arg_objs, size), [])
+        return (lu.vstack(arg_objs, shape), [])

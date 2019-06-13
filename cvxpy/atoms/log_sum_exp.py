@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,27 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import cvxpy.lin_ops.lin_utils as lu
 from cvxpy.atoms.atom import Atom
 from cvxpy.atoms.axis_atom import AxisAtom
-from cvxpy.atoms.elementwise.exp import exp
 import numpy as np
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 
 
 class log_sum_exp(AxisAtom):
-    """:math:`\log\sum_i e^{x_i}`
+    """:math:`\\log\\sum_i e^{x_i}`
 
     """
 
-    def __init__(self, x, axis=None):
-        super(log_sum_exp, self).__init__(x, axis=axis)
+    def __init__(self, x, axis=None, keepdims=False):
+        super(log_sum_exp, self).__init__(x, axis=axis, keepdims=keepdims)
 
     @Atom.numpy_numeric
     def numeric(self, values):
         """Evaluates e^x elementwise, sums, and takes the log.
         """
-        return logsumexp(values[0], axis=self.axis, keepdims=True)
+        return logsumexp(values[0], axis=self.axis, keepdims=self.keepdims)
 
     def _grad(self, values):
         """Gives the (sub/super)gradient of the atom w.r.t. each argument.
@@ -68,7 +66,7 @@ class log_sum_exp(AxisAtom):
     def sign_from_args(self):
         """Returns sign (is positive, is negative) of the expression.
         """
-        return (True, False)
+        return (False, False)
 
     def is_atom_convex(self):
         """Is the atom convex?
@@ -89,59 +87,3 @@ class log_sum_exp(AxisAtom):
         """Is the composition non-increasing in argument idx?
         """
         return False
-
-    @staticmethod
-    def graph_implementation(arg_objs, size, data=None):
-        """Reduces the atom to an affine expression and list of constraints.
-
-        Parameters
-        ----------
-        arg_objs : list
-            LinExpr for each argument.
-        size : tuple
-            The size of the resulting expression.
-        data :
-            Additional data required by the atom.
-
-        Returns
-        -------
-        tuple
-            (LinOp for objective, list of constraints)
-        """
-        x = arg_objs[0]
-        axis = data[0]
-        t = lu.create_var(size)
-
-        # sum(exp(x - t)) <= 1
-        if axis is None:
-            prom_t = lu.promote(t, x.size)
-            expr = lu.sub_expr(x, prom_t)
-            obj, constraints = exp.graph_implementation([expr], x.size)
-            obj = lu.sum_entries(obj)
-
-        elif axis == 0:
-            prom_size = (x.size[0], 1)
-            ones = lu.create_const(np.ones(prom_size), prom_size)
-            prom_t = lu.mul_expr(ones, t, x.size)
-            expr = lu.sub_expr(x, prom_t)
-            obj, constraints = exp.graph_implementation([expr], x.size)
-
-            const_size = (1, x.size[0])
-            ones = lu.create_const(np.ones(const_size), const_size)
-            obj = lu.mul_expr(ones, obj, size)
-
-        else:  # axis == 1
-            prom_size = (1, x.size[1])
-            ones = lu.create_const(np.ones(prom_size), prom_size)
-            prom_t = lu.rmul_expr(t, ones, x.size)
-            expr = lu.sub_expr(x, prom_t)
-            obj, constraints = exp.graph_implementation([expr], x.size)
-
-            const_size = (x.size[1], 1)
-            ones = lu.create_const(np.ones(const_size), const_size)
-            obj = lu.rmul_expr(obj, ones, size)
-
-        ones = lu.create_const(np.ones(size), size)
-        constraints += [lu.create_leq(obj, ones)]
-
-        return (t, constraints)

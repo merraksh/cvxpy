@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,18 +23,12 @@ class CallbackParam(Parameter):
     """
     PARAM_COUNT = 0
 
-    def __init__(self, atom, rows=1, cols=1, name=None, sign="unknown"):
-        self.atom = atom
-        super(CallbackParam, self).__init__(rows, cols, name, sign)
+    def __init__(self, callback, shape=(), **kwargs):
+        self._callback = callback
+        super(CallbackParam, self).__init__(shape, **kwargs)
 
     @property
     def value(self):
         """Evaluate the callback to get the value.
         """
-        return self._validate_value(self.atom.value)
-
-    def get_data(self):
-        """Returns info needed to reconstruct the expression besides the args.
-        """
-        return [self.atom, self._rows, self._cols,
-                self._name, self.sign_str]
+        return self._validate_value(self._callback())

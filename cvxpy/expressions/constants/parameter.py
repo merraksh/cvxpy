@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,53 +20,42 @@ import cvxpy.lin_ops.lin_utils as lu
 
 
 class Parameter(Leaf):
-    """
-    A parameter, either matrix or scalar.
+    """Parameters in optimization problems.
+
+    Parameters are constant expressions whose value may be specified
+    after problem creation. The only way to modify a problem after its
+    creation is through parameters. For example, you might choose to declare
+    the hyper-parameters of a machine learning model to be Parameter objects;
+    more generally, Parameters are useful for computing trade-off curves.
     """
     PARAM_COUNT = 0
 
-    def __init__(self, rows=1, cols=1, name=None, sign="unknown", value=None):
+    def __init__(self, shape=(), name=None, value=None, **kwargs):
         self.id = lu.get_id()
-        self._rows = rows
-        self._cols = cols
-        self._sign_str = sign
         if name is None:
             self._name = "%s%d" % (s.PARAM_PREFIX, self.id)
         else:
             self._name = name
         # Initialize with value if provided.
         self._value = None
-        if value is not None:
-            self.value = value
-        super(Parameter, self).__init__()
+        super(Parameter, self).__init__(shape, value, **kwargs)
 
     def get_data(self):
         """Returns info needed to reconstruct the expression besides the args.
         """
-        return [self._rows, self._cols, self._name, self._sign_str, self.value]
+        return [self.shape, self._name, self.value, self.attributes]
 
     def name(self):
         return self._name
 
-    @property
-    def size(self):
-        """Returns the (row, col) dimensions of the expression.
-        """
-        return (self._rows, self._cols)
-
-    def is_positive(self):
-        """Is the expression positive?
-        """
-        return self._sign_str == s.ZERO or self._sign_str.upper() == s.POSITIVE
-
-    def is_negative(self):
-        """Is the expression negative?
-        """
-        return self._sign_str == s.ZERO or self._sign_str.upper() == s.NEGATIVE
+    def is_constant(self):
+        return True
 
     # Getter and setter for parameter value.
     @property
     def value(self):
+        """NumPy.ndarray or None: The numeric value of the parameter.
+        """
         return self._value
 
     @value.setter
@@ -95,12 +84,14 @@ class Parameter(Leaf):
         Returns:
             A tuple of (affine expression, [constraints]).
         """
-        obj = lu.create_param(self, self.size)
+        obj = lu.create_param(self, self.shape)
         return (obj, [])
 
     def __repr__(self):
         """String to recreate the object.
         """
-        return 'Parameter(%d, %d, sign="%s")' % (self._rows,
-                                                 self._cols,
-                                                 self.sign)
+        attr_str = self._get_attr_str()
+        if len(attr_str) > 0:
+            return "Parameter(%s%s)" % (self.shape, attr_str)
+        else:
+            return "Parameter(%s)" % (self.shape,)

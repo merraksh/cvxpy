@@ -1,5 +1,5 @@
 """
-Copyright 2017 Steven Diamond
+Copyright 2013 Steven Diamond
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from cvxpy.atoms.elementwise.max_elemwise import max_elemwise
+from cvxpy.atoms.elementwise.maximum import maximum
 
 
 def pos(x):
-    """ Alias for max_elemwise{x,0}.
+    """ Alias for maximum{x,0}.
 
     """
-    return max_elemwise(x, 0)
+    return maximum(x, 0)
