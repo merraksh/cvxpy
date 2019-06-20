@@ -228,13 +228,13 @@ The functions ``is_real``, ``is_complex``, and ``is_imag`` return whether an exp
    p.is_imag() = True
    (x + 2).is_real() = False
 
-The top-level expressions in the problem objective and inequality constraints must be real valued,
+The top-level expressions in the problem objective must be real valued,
 but subexpressions may be complex.
 Arithmetic and all linear atoms are defined for complex expressions.
 The nonlinear atoms ``abs`` and all norms except ``norm(X, p)`` for ``p < 1`` are also defined for complex expressions.
 All atoms whose domain is symmetric matrices are defined for Hermitian matrices.
 Similarly, the atoms ``quad_form(x, P)`` and ``matrix_frac(x, P)`` are defined for complex ``x`` and Hermitian ``P``.
-Lastly, equality and postive semidefinite constraints are defined for complex expressions.
+All constraints are defined for complex expressions.
 
 The following additional atoms are provided for working with complex expressions:
 
